@@ -7,28 +7,44 @@ import type { SajuInput } from '@/lib/saju/types';
 interface Props {
   onSubmit: (input: SajuInput) => void;
   loading: boolean;
+  /** 카드 수정처럼 기존 값에서 시작할 때 */
+  initial?: SajuInput;
+  /** 제출 버튼 문구. 기본은 개인 사주 화면의 「만세력 보기」 */
+  submitLabel?: string;
+  /** 버튼 아래 안내문. null 이면 감춘다. */
+  footnote?: string | null;
+  /** 취소가 필요한 화면(카드 편집)에서 쓴다. */
+  onCancel?: () => void;
 }
 
 const YEARS = Array.from({ length: 151 }, (_, i) => 2050 - i);
 
-export function BirthForm({ onSubmit, loading }: Props) {
-  const [name, setName] = useState('');
-  const [gender, setGender] = useState<'male' | 'female'>('male');
-  const [calendar, setCalendar] = useState<'solar' | 'lunar'>('solar');
-  const [isLeapMonth, setIsLeapMonth] = useState(false);
+export function BirthForm({
+  onSubmit,
+  loading,
+  initial,
+  submitLabel = '만세력 보기',
+  footnote = '만세력 계산에는 AI를 쓰지 않습니다. 사주풀이는 결과 화면에서 따로 요청합니다.',
+  onCancel,
+}: Props) {
+  const [name, setName] = useState(initial?.name ?? '');
+  const [gender, setGender] = useState<'male' | 'female'>(initial?.gender ?? 'male');
+  const [calendar, setCalendar] = useState<'solar' | 'lunar'>(initial?.calendar ?? 'solar');
+  const [isLeapMonth, setIsLeapMonth] = useState(initial?.isLeapMonth ?? false);
 
-  const now = new Date();
-  const [year, setYear] = useState(1990);
-  const [month, setMonth] = useState(1);
-  const [day, setDay] = useState(1);
-  const [timeUnknown, setTimeUnknown] = useState(false);
-  const [hour, setHour] = useState(12);
-  const [minute, setMinute] = useState(0);
-  const [city, setCity] = useState('서울');
+  const [year, setYear] = useState(initial?.year ?? 1990);
+  const [month, setMonth] = useState(initial?.month ?? 1);
+  const [day, setDay] = useState(initial?.day ?? 1);
+  const [timeUnknown, setTimeUnknown] = useState(initial?.timeUnknown ?? false);
+  const [hour, setHour] = useState(initial?.hour ?? 12);
+  const [minute, setMinute] = useState(initial?.minute ?? 0);
+  const [city, setCity] = useState(initial?.city ?? '서울');
 
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [solarTimeMode, setSolarTimeMode] = useState<'none' | 'longitude' | 'apparent'>('longitude');
-  const [lateZiHour, setLateZiHour] = useState(false);
+  const [solarTimeMode, setSolarTimeMode] = useState<'none' | 'longitude' | 'apparent'>(
+    initial?.solarTimeMode ?? 'longitude',
+  );
+  const [lateZiHour, setLateZiHour] = useState(initial?.lateZiHour ?? false);
 
   // 양력일 때만 그 달의 실제 일수를 반영한다. 음력은 29~30일이라 30까지 둔다.
   const daysInMonth = useMemo(() => {
@@ -251,17 +267,29 @@ export function BirthForm({ onSubmit, loading }: Props) {
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="mt-6 w-full rounded-lg px-4 py-3 text-sm font-semibold text-white transition disabled:opacity-50"
-        style={{ background: 'var(--accent)' }}
-      >
-        {loading ? '계산 중…' : '만세력 보기'}
-      </button>
-      <p className="mt-2 text-center text-xs text-[var(--text-muted)]">
-        만세력 계산에는 AI를 쓰지 않습니다. 사주풀이는 결과 화면에서 따로 요청합니다.
-      </p>
+      <div className="mt-6 flex gap-2">
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-lg border px-4 py-3 text-sm transition"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            취소
+          </button>
+        )}
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex-1 rounded-lg px-4 py-3 text-sm font-semibold text-white transition disabled:opacity-50"
+          style={{ background: 'var(--accent)' }}
+        >
+          {loading ? '계산 중…' : submitLabel}
+        </button>
+      </div>
+      {footnote && (
+        <p className="mt-2 text-center text-xs text-[var(--text-muted)]">{footnote}</p>
+      )}
     </form>
   );
 }

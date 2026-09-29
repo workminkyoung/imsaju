@@ -174,7 +174,90 @@ export const SOLAR_TERMS: readonly SolarTermDef[] = [
   { name: '대한', longitude: 300, isMonthBoundary: false },
 ];
 
+// ── 간지 사이의 관계 (궁합 계산용) ────────────────────────────────────────
+//
+// 전부 전통 명리학에서 고정된 표다. 규칙성이 있지만(예: 육합은 두 인덱스의 합이
+// 12로 나눈 나머지 1) 계산으로 유도하지 않고 표로 적는다. 대신 그 규칙성을
+// 테스트로 확인해 오타를 잡는다.
+
+/** 지지 인덱스 쌍 */
+export type BranchPair = readonly [number, number];
+
+/** 육합(六合) — 서로 끌어당겨 묶이는 짝. 子丑 寅亥 卯戌 辰酉 巳申 午未 */
+export const SIX_HARMONY: readonly BranchPair[] = [
+  [0, 1], [2, 11], [3, 10], [4, 9], [5, 8], [6, 7],
+];
+
+/** 삼합(三合) — 같은 국(局)을 이루는 세 지지. 둘만 만나면 반합(半合)이 된다. */
+export const THREE_HARMONY: readonly { branches: readonly number[]; element: Element }[] = [
+  { branches: [8, 0, 4], element: '수' }, //  申子辰
+  { branches: [11, 3, 7], element: '목' }, // 亥卯未
+  { branches: [2, 6, 10], element: '화' }, // 寅午戌
+  { branches: [5, 9, 1], element: '금' }, //  巳酉丑
+];
+
+/** 방합(方合) — 같은 계절의 세 지지. */
+export const DIRECTION_HARMONY: readonly { branches: readonly number[]; element: Element }[] = [
+  { branches: [2, 3, 4], element: '목' }, //   寅卯辰 (봄)
+  { branches: [5, 6, 7], element: '화' }, //   巳午未 (여름)
+  { branches: [8, 9, 10], element: '금' }, //  申酉戌 (가을)
+  { branches: [11, 0, 1], element: '수' }, //  亥子丑 (겨울)
+];
+
+/** 충(沖) — 정면으로 부딪히는 짝. 마주 보는 위치(인덱스 차이 6). */
+export const BRANCH_CLASH: readonly BranchPair[] = [
+  [0, 6], [1, 7], [2, 8], [3, 9], [4, 10], [5, 11],
+];
+
+/** 삼형(三刑) — 셋이 모여 서로를 형(刑)한다. 둘만 만나도 형이 성립한다. */
+export const THREE_PUNISHMENT: readonly (readonly number[])[] = [
+  [2, 5, 8], //  寅巳申 (무은지형)
+  [1, 10, 7], // 丑戌未 (지세지형)
+];
+
+/** 상형(相刑) — 子卯 무례지형 */
+export const MUTUAL_PUNISHMENT: readonly BranchPair[] = [[0, 3]];
+
+/** 자형(自刑) — 같은 글자끼리 만나면 스스로를 형한다. 辰 午 酉 亥 */
+export const SELF_PUNISHMENT: readonly number[] = [4, 6, 9, 11];
+
+/** 해(害) — 은근히 갉아먹는 짝. 두 인덱스의 합이 12로 나눈 나머지 7. */
+export const BRANCH_HARM: readonly BranchPair[] = [
+  [0, 7], [1, 6], [2, 5], [3, 4], [8, 11], [9, 10],
+];
+
+/** 파(破) — 틀을 깨뜨리는 짝. */
+export const BRANCH_BREAK: readonly BranchPair[] = [
+  [0, 9], [3, 6], [5, 8], [2, 11], [1, 4], [7, 10],
+];
+
+/** 원진(怨嗔) — 까닭 없이 미워지는 짝. */
+export const BRANCH_RESENTMENT: readonly BranchPair[] = [
+  [0, 7], [1, 6], [2, 9], [3, 8], [4, 11], [5, 10],
+];
+
+/** 천간합(天干合) — 합해서 다른 오행으로 변한다. 인덱스 차이 5. */
+export const STEM_HARMONY: readonly { pair: BranchPair; element: Element }[] = [
+  { pair: [0, 5], element: '토' }, // 甲己 → 토
+  { pair: [1, 6], element: '금' }, // 乙庚 → 금
+  { pair: [2, 7], element: '수' }, // 丙辛 → 수
+  { pair: [3, 8], element: '목' }, // 丁壬 → 목
+  { pair: [4, 9], element: '화' }, // 戊癸 → 화
+];
+
+/**
+ * 천간충(天干沖) — 인덱스 차이 6. 戊己(토)는 중앙이라 충하는 짝이 없어 네 쌍뿐이다.
+ */
+export const STEM_CLASH: readonly BranchPair[] = [
+  [0, 6], [1, 7], [2, 8], [3, 9],
+];
+
 // ── 헬퍼 ──────────────────────────────────────────────────────────────────
+
+/** 지지 인덱스 쌍이 표에 있는지 (순서 무관) */
+export function hasPair(table: readonly BranchPair[], a: number, b: number): boolean {
+  return table.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+}
 
 /** 60갑자 인덱스 → 간지 문자열 (예: 0 → 甲子) */
 export function ganjiOf(index: number): string {

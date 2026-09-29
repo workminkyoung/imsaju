@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Markdown } from '@/components/Markdown';
 
 interface PromptData {
+  kind: string;
+  kinds: ReadonlyArray<{ id: string; label: string }>;
   template: string;
   defaultTemplate: string;
   systemInstruction: string;
@@ -18,6 +20,8 @@ export default function AdminPage() {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
+  /** 편집 중인 프롬프트 종류 (개인 사주풀이 / 궁합 풀이) */
+  const [kind, setKind] = useState('reading');
   const [data, setData] = useState<PromptData | null>(null);
   const [template, setTemplate] = useState('');
   const [tab, setTab] = useState<Tab>('edit');
@@ -29,8 +33,8 @@ export default function AdminPage() {
   const [testResult, setTestResult] = useState('');
   const [testModel, setTestModel] = useState('');
 
-  const load = useCallback(async () => {
-    const response = await fetch('/api/admin/prompt');
+  const load = useCallback(async (which: string) => {
+    const response = await fetch(`/api/admin/prompt?kind=${which}`);
     if (response.status === 401) {
       setAuthed(false);
       return;
@@ -39,11 +43,18 @@ export default function AdminPage() {
     setData(json);
     setTemplate(json.template);
     setAuthed(true);
+    // 종류를 바꾸면 이전 종류의 미리보기·테스트 결과가 남아 헷갈린다.
+    setRendered('');
+    setTestResult('');
+    setTestModel('');
+    setUnknownVariables([]);
+    setMessage('');
+    setTab('edit');
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void load(kind);
+  }, [load, kind]);
 
   async function login(event: React.FormEvent) {
     event.preventDefault();
@@ -59,7 +70,7 @@ export default function AdminPage() {
       return;
     }
     setPassword('');
-    await load();
+    await load(kind);
   }
 
   async function save() {
@@ -68,7 +79,7 @@ export default function AdminPage() {
     const response = await fetch('/api/admin/prompt', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ template }),
+      body: JSON.stringify({ template, kind }),
     });
     const json = (await response.json()) as { persisted?: boolean; note?: string; error?: string };
     setMessage(
@@ -81,7 +92,7 @@ export default function AdminPage() {
   async function reset() {
     if (!confirm('프롬프트를 기본값으로 되돌립니다. 지금 편집 중인 내용은 사라집니다.')) return;
     setBusy(true);
-    const response = await fetch('/api/admin/prompt', { method: 'DELETE' });
+    const response = await fetch(`/api/admin/prompt?kind=${kind}`, { method: 'DELETE' });
     const json = (await response.json()) as { template?: string };
     if (json.template) setTemplate(json.template);
     setMessage('기본값으로 되돌렸습니다.');
@@ -98,7 +109,7 @@ export default function AdminPage() {
     const response = await fetch('/api/admin/prompt', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ template, run }),
+      body: JSON.stringify({ template, run, kind }),
     });
     const json = (await response.json()) as {
       rendered?: string;
@@ -162,10 +173,34 @@ export default function AdminPage() {
     <main className="space-y-4">
       <section className="card">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-base font-semibold">사주풀이 프롬프트</h2>
+          <h2 className="text-base font-semibold">프롬프트 편집</h2>
           <span className="text-xs text-[var(--text-muted)]">
             {template.length.toLocaleString()}자
           </span>
+        </div>
+
+        {/* 어느 프롬프트를 고치는지 항상 보이게 둔다 */}
+        <div className="mt-3 flex gap-2">
+          {data?.kinds.map((item) => {
+            const active = item.id === kind;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setKind(item.id)}
+                disabled={busy}
+                className="flex-1 rounded-lg border px-3 py-2 text-sm transition disabled:opacity-50"
+                style={{
+                  borderColor: active ? 'var(--accent)' : 'var(--border)',
+                  background: active ? 'var(--accent-soft)' : 'transparent',
+                  color: active ? 'var(--accent)' : 'var(--text-muted)',
+                  fontWeight: active ? 600 : 400,
+                }}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </div>
 
         {data?.envOverride && (

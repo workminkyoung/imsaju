@@ -3,19 +3,31 @@
 import { useRef, useState } from 'react';
 import { Markdown } from './Markdown';
 import { splitInterrupt } from '@/lib/streamMarker';
-import type { SajuInput } from '@/lib/saju/types';
 
 interface Props {
-  input: SajuInput;
+  /** 스트리밍 엔드포인트 (/api/reading 또는 /api/compatibility/reading) */
+  endpoint: string;
+  /** 그대로 JSON 으로 보낼 요청 본문 */
+  body: unknown;
+  title?: string;
+  description?: string;
+  /** 첫 생성 버튼 문구 */
+  actionLabel?: string;
 }
 
 /**
- * 사주풀이 생성 패널.
+ * LLM 풀이 생성 패널. 개인 사주와 궁합이 같은 흐름이라 하나를 공유한다.
  *
- * 만세력은 이미 화면에 떠 있고, 여기서 버튼을 눌러야 비로소 Gemini를 호출한다.
- * 만세력만 보고 나가는 사용자는 API 할당량을 전혀 쓰지 않는다.
+ * 계산 결과는 이미 화면에 떠 있고, 여기서 버튼을 눌러야 비로소 Gemini를 호출한다.
+ * 계산만 보고 나가는 사용자는 API 할당량을 전혀 쓰지 않는다.
  */
-export function ReadingPanel({ input }: Props) {
+export function ReadingPanel({
+  endpoint,
+  body,
+  title = '사주풀이',
+  description = '위 만세력을 근거로 Gemini가 해석합니다. 이 단계에서만 AI를 사용합니다.',
+  actionLabel = '사주풀이 생성',
+}: Props) {
   const [text, setText] = useState('');
   const [status, setStatus] = useState<'idle' | 'streaming' | 'done' | 'interrupted' | 'error'>('idle');
   const [error, setError] = useState('');
@@ -35,16 +47,16 @@ export function ReadingPanel({ input }: Props) {
     setStatus('streaming');
 
     try {
-      const response = await fetch('/api/reading', {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(input),
+        body: JSON.stringify(body),
         signal: controller.signal,
       });
 
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        setError(data.error ?? '사주풀이를 생성하지 못했습니다.');
+        setError(data.error ?? '풀이를 생성하지 못했습니다.');
         setStatus('error');
         return;
       }
@@ -83,9 +95,9 @@ export function ReadingPanel({ input }: Props) {
     <section className="card">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold">사주풀이</h2>
+          <h2 className="text-base font-semibold">{title}</h2>
           <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-            위 만세력을 근거로 Gemini가 해석합니다. 이 단계에서만 AI를 사용합니다.
+            {description}
           </p>
         </div>
 
@@ -96,7 +108,7 @@ export function ReadingPanel({ input }: Props) {
             className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition"
             style={{ background: 'var(--accent)' }}
           >
-            {status === 'idle' ? '사주풀이 생성' : '다시 생성'}
+            {status === 'idle' ? actionLabel : '다시 생성'}
           </button>
         )}
       </div>
