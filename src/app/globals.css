@@ -1,0 +1,136 @@
+@import 'tailwindcss';
+
+/*
+  만세력은 한자와 한글이 섞이고 표가 많다. 가독성이 전부라
+  색과 간격을 토큰으로 묶어 화면 전체에서 같은 규칙을 쓴다.
+*/
+:root {
+  --bg: #faf8f4;
+  --surface: #ffffff;
+  --surface-sunken: #f2efe8;
+  --border: #e2ddd2;
+  --text: #221f1a;
+  --text-muted: #6b6459;
+  --accent: #8b5e34;
+  --accent-soft: #f0e6d9;
+
+  /* 오행 색 — 계산 결과와 UI가 같은 값을 쓴다 */
+  --wood: #2f9e5e;
+  --fire: #d64545;
+  --earth: #b08340;
+  --metal: #8a8f98;
+  --water: #2f6fb0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #171512;
+    --surface: #211e1a;
+    --surface-sunken: #1a1815;
+    --border: #35302a;
+    --text: #ece7de;
+    --text-muted: #9c9388;
+    --accent: #c99a6b;
+    --accent-soft: #2e2720;
+
+    --wood: #56c98a;
+    --fire: #ef7272;
+    --earth: #d3a463;
+    --metal: #b2b7c0;
+    --water: #5f9bd8;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-sunken: var(--surface-sunken);
+  --color-line: var(--border);
+  --color-ink: var(--text);
+  --color-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic',
+    system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 간지 한자는 본문보다 크고 또렷해야 읽힌다 */
+.ganji {
+  font-family: 'Noto Serif KR', 'Nanum Myeongjo', 'Batang', serif;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* 폼 요소 공통 */
+.field {
+  @apply w-full rounded-lg border px-3 py-2 text-sm outline-none transition;
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+.field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.label {
+  @apply mb-1.5 block text-xs font-medium;
+  color: var(--text-muted);
+}
+
+.card {
+  @apply rounded-xl border p-5;
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+/* 사주풀이 마크다운 출력 */
+.reading h2 {
+  @apply mt-7 mb-2.5 text-lg font-bold;
+  color: var(--accent);
+}
+.reading h2:first-child {
+  @apply mt-0;
+}
+.reading h3 {
+  @apply mt-5 mb-2 text-base font-semibold;
+}
+.reading p {
+  @apply my-3 leading-[1.85];
+}
+.reading ul,
+.reading ol {
+  @apply my-3 space-y-1.5 pl-5;
+}
+.reading ul {
+  @apply list-disc;
+}
+.reading ol {
+  @apply list-decimal;
+}
+.reading strong {
+  @apply font-semibold;
+  color: var(--accent);
+}
+.reading table {
+  @apply my-4 w-full border-collapse text-sm;
+}
+.reading th,
+.reading td {
+  @apply border px-2.5 py-1.5;
+  border-color: var(--border);
+}
+.reading th {
+  background: var(--surface-sunken);
+}

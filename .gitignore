@@ -1,0 +1,45 @@
+# 의존성
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+
+# 빌드 산출물
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# 환경변수 — API 키가 들어가므로 절대 커밋 금지
+.env
+.env.local
+.env.*.local
+
+# 관리자가 저장한 프롬프트 (런타임 데이터)
+data/
+
+# 테스트·커버리지
+coverage/
+.vitest/
+
+# 배포
+.vercel
+
+# 로그
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# 편집기·OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# 작업용 임시 파일
+.tmp/
+scripts/_*
