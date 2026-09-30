@@ -1,8 +1,18 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  // 만세력 계산은 Node 런타임 전용(Intl tz 오프셋 역산, astronomy-engine)
-  serverExternalPackages: ['astronomy-engine'],
+  /*
+   * serverExternalPackages 에 astronomy-engine 을 넣지 않는다.
+   *
+   * 넣으면 Next 가 번들에 담지 않고 런타임에 외부 모듈로 불러오는데, 이 패키지는
+   * CJS 진입점(astronomy.js)과 ESM 진입점(esm/astronomy.js)이 따로다. 추적에는
+   * ESM 쪽만 실려서 로더가 그걸 CommonJS 로 읽다가
+   * "SyntaxError: Unexpected token 'export'" 로 죽는다. Vercel 에서 만세력 라우트가
+   * 전부 500 을 내던 원인이 이것이었다.
+   *
+   * 네이티브 바인딩이 없는 순수 JS 라 번들에 들어가도 문제없다. Node 런타임 고정은
+   * 각 라우트의 `export const runtime = 'nodejs'` 가 이미 하고 있다.
+   */
 
   /**
    * 도커나 일반 서버로 옮길 때는 standalone 빌드가 필요하다.
