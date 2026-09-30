@@ -18,6 +18,26 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     '/api/**': ['./prompts/**'],
   },
+
+  /**
+   * 관리자 영역은 CDN·프록시가 절대 캐시하면 안 된다.
+   *
+   * Next 는 이 응답들에 Cache-Control 을 붙이지 않고 Vary 에도 Cookie 가 없다.
+   * 그대로 두면 앞단 캐시가 URL 만으로 응답을 재사용해서,
+   *   - 로그인 전에 받은 401 이 로그인 후에도 계속 돌아오고(로그인이 안 되는 것처럼 보인다)
+   *   - 반대로 인증된 응답이 남에게 나갈 수도 있다.
+   * 로컬에는 앞단 캐시가 없어서 드러나지 않는다.
+   */
+  async headers() {
+    const noStore = [
+      { key: 'Cache-Control', value: 'private, no-store, max-age=0, must-revalidate' },
+      { key: 'Vary', value: 'Cookie' },
+    ];
+    return [
+      { source: '/api/admin/:path*', headers: noStore },
+      { source: '/admin', headers: noStore },
+    ];
+  },
 };
 
 export default nextConfig;

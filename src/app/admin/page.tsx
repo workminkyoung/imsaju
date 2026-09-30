@@ -35,11 +35,18 @@ export default function AdminPage() {
   const [testResult, setTestResult] = useState('');
   const [testModel, setTestModel] = useState('');
 
-  const load = useCallback(async (which: string) => {
-    const response = await fetch(`/api/admin/prompt?kind=${which}`);
+  /** 불러오기에 성공했는지 돌려준다. 실패를 조용히 삼키면 화면이 아무 말도 안 한다. */
+  const load = useCallback(async (which: string): Promise<boolean> => {
+    // 앞단 캐시가 로그인 전 401 을 돌려주는 일을 막는다.
+    const response = await fetch(`/api/admin/prompt?kind=${which}`, { cache: 'no-store' });
     if (response.status === 401) {
       setAuthed(false);
-      return;
+      return false;
+    }
+    if (!response.ok) {
+      setAuthed(false);
+      setLoginError(`서버가 ${response.status} 를 돌려줬습니다. 잠시 후 다시 시도해 주세요.`);
+      return false;
     }
     const json = (await response.json()) as PromptData;
     setData(json);
@@ -52,6 +59,7 @@ export default function AdminPage() {
     setUnknownVariables([]);
     setMessage('');
     setTab('edit');
+    return true;
   }, []);
 
   useEffect(() => {
@@ -72,7 +80,15 @@ export default function AdminPage() {
       return;
     }
     setPassword('');
-    await load(kind);
+    // 비밀번호는 맞았는데 세션이 안 붙는 경우가 있다. 조용히 로그인 화면으로
+    // 되돌아가면 사용자는 아무 단서도 없이 비밀번호만 다시 쳐 보게 된다.
+    const ok = await load(kind);
+    if (!ok) {
+      setLoginError(
+        '비밀번호는 맞았지만 세션이 유지되지 않았습니다. ' +
+          '브라우저가 쿠키를 막고 있는지 확인해 보시고, 계속 같으면 새로고침 후 다시 시도해 주세요.',
+      );
+    }
   }
 
   async function save() {
