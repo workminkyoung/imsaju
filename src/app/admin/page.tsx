@@ -1,7 +1,25 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Markdown } from '@/components/Markdown';
+
+const LOGOUT_URL = '/api/admin/logout';
+
+/**
+ * 페이지를 떠나는 중에 보내는 로그아웃.
+ *
+ * 언로드 중에는 일반 fetch 가 중간에 잘릴 수 있어 sendBeacon 을 쓴다.
+ * 브라우저가 큐에 넣고 페이지가 사라진 뒤에도 끝까지 보내 준다.
+ */
+function logoutBeacon() {
+  try {
+    if (navigator.sendBeacon?.(LOGOUT_URL)) return;
+  } catch {
+    // sendBeacon 이 막혀 있으면 아래로 넘어간다.
+  }
+  // keepalive 를 주면 fetch 도 언로드를 어느 정도 버틴다.
+  void fetch(LOGOUT_URL, { method: 'POST', keepalive: true }).catch(() => {});
+}
 
 interface PromptData {
   kind: string;
@@ -35,6 +53,19 @@ export default function AdminPage() {
   const [testResult, setTestResult] = useState('');
   const [testModel, setTestModel] = useState('');
 
+  /** 서버에서 받아 온 원본. 편집 중인 template 과 다르면 저장 안 된 변경이 있다는 뜻. */
+  const [savedTemplate, setSavedTemplate] = useState('');
+  const dirty = authed && template !== savedTemplate;
+
+  // 이벤트 핸들러가 최신 값을 보게 한다. 등록 시점의 값에 갇히면 안 된다.
+  const authedRef = useRef(authed);
+  const dirtyRef = useRef(dirty);
+  authedRef.current = authed;
+  dirtyRef.current = dirty;
+
+  /** 예약해 둔 자동 로그아웃. StrictMode 가 효과를 두 번 돌릴 때 취소된다. */
+  const pendingLogout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   /** 불러오기에 성공했는지 돌려준다. 실패를 조용히 삼키면 화면이 아무 말도 안 한다. */
   const load = useCallback(async (which: string): Promise<boolean> => {
     // 앞단 캐시가 로그인 전 401 을 돌려주는 일을 막는다.
@@ -51,6 +82,7 @@ export default function AdminPage() {
     const json = (await response.json()) as PromptData;
     setData(json);
     setTemplate(json.template);
+    setSavedTemplate(json.template);
     setAuthed(true);
     // 종류를 바꾸면 이전 종류의 미리보기·테스트 결과가 남아 헷갈린다.
     setRendered('');
@@ -65,6 +97,49 @@ export default function AdminPage() {
   useEffect(() => {
     void load(kind);
   }, [load, kind]);
+
+  /**
+   * 관리자 화면을 벗어나면 자동으로 로그아웃한다.
+   *
+   * 두 가지 경로를 모두 막아야 한다.
+   *   - 탭을 닫거나 새로고침하거나 외부로 이동  → pagehide
+   *   - 앱 안에서 다른 화면으로 이동            → 언마운트 정리
+   *
+   * 언마운트 정리에는 함정이 있다. 개발 모드의 StrictMode 는 효과를 일부러 두 번
+   * 실행하므로 그대로 두면 로그인하자마자 로그아웃된다. 그래서 정리 단계에서는
+   * 바로 보내지 않고 예약만 하고, 곧바로 다시 마운트되면 취소한다.
+   */
+  useEffect(() => {
+    if (pendingLogout.current !== null) {
+      clearTimeout(pendingLogout.current);
+      pendingLogout.current = null;
+    }
+
+    const onPageHide = () => {
+      if (authedRef.current) logoutBeacon();
+    };
+    // beforeunload 는 탭 닫기에서 신뢰할 수 없다. pagehide 가 표준이다.
+    window.addEventListener('pagehide', onPageHide);
+
+    // 저장 안 한 편집이 있으면 떠나기 전에 한 번 물어본다.
+    // 자동 로그아웃 때문에 나갔다 오면 편집 내용이 사라지기 때문이다.
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!dirtyRef.current) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      if (!authedRef.current) return;
+      pendingLogout.current = setTimeout(() => {
+        pendingLogout.current = null;
+        logoutBeacon();
+      }, 0);
+    };
+  }, []);
 
   async function login(event: React.FormEvent) {
     event.preventDefault();
@@ -98,10 +173,11 @@ export default function AdminPage() {
    * 로그인이 실제로 되는지 확인할 방법도 없다.
    */
   async function logout() {
-    await fetch('/api/admin/login', { method: 'DELETE' });
+    await fetch(LOGOUT_URL, { method: 'POST' });
     setAuthed(false);
     setData(null);
     setTemplate('');
+    setSavedTemplate('');
     setLoginError('');
     setMessage('');
     setRendered('');
@@ -117,6 +193,7 @@ export default function AdminPage() {
       body: JSON.stringify({ template, kind }),
     });
     const json = (await response.json()) as { persisted?: boolean; note?: string; error?: string };
+    if (!json.error) setSavedTemplate(template);
     setMessage(
       json.error ??
         (json.persisted ? '저장했습니다.' : `저장했습니다. ${json.note ?? ''}`),
@@ -129,7 +206,10 @@ export default function AdminPage() {
     setBusy(true);
     const response = await fetch(`/api/admin/prompt?kind=${kind}`, { method: 'DELETE' });
     const json = (await response.json()) as { template?: string };
-    if (json.template) setTemplate(json.template);
+    if (json.template) {
+      setTemplate(json.template);
+      setSavedTemplate(json.template);
+    }
     setMessage('기본값으로 되돌렸습니다.');
     setBusy(false);
   }
@@ -198,6 +278,7 @@ export default function AdminPage() {
           </button>
           <p className="mt-3 text-[11px] leading-relaxed text-[var(--text-muted)]">
             비밀번호는 서버의 <code>ADMIN_PASSWORD</code> 환경변수로 설정합니다.
+            이 화면을 벗어나거나 새로고침하면 자동으로 로그아웃됩니다.
           </p>
         </form>
       </main>
@@ -210,6 +291,11 @@ export default function AdminPage() {
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-base font-semibold">프롬프트 편집</h2>
           <div className="flex items-baseline gap-3">
+            {dirty && (
+              <span className="text-xs font-medium" style={{ color: 'var(--accent)' }}>
+                저장 안 됨
+              </span>
+            )}
             <span className="text-xs text-[var(--text-muted)]">
               {template.length.toLocaleString()}자
             </span>

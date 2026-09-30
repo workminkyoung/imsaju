@@ -23,7 +23,8 @@ export async function POST(request: Request) {
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
       path: '/',
-      maxAge: 60 * 60 * 12,
+      // maxAge 를 주지 않아 세션 쿠키가 된다 — 브라우저를 닫으면 함께 사라진다.
+      // 관리자 화면을 벗어날 때도 자동으로 로그아웃하므로 오래 살려 둘 이유가 없다.
     });
     return response;
   } catch (error) {
