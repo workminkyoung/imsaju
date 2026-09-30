@@ -25,7 +25,7 @@ export function ReadingPanel({
   endpoint,
   body,
   title = '사주풀이',
-  description = '위 만세력을 근거로 Gemini가 해석합니다. 이 단계에서만 AI를 사용합니다.',
+  description = '위 만세력을 그대로 근거 삼아 풀이해 드려요. 이 단계에서만 AI를 씁니다.',
   actionLabel = '사주풀이 생성',
 }: Props) {
   const [text, setText] = useState('');
@@ -115,7 +115,7 @@ export function ReadingPanel({
 
       {status === 'streaming' && !text && (
         <p className="mt-5 text-sm text-[var(--text-muted)]">
-          해석을 쓰는 중입니다… 무료 티어에서는 첫 글자까지 몇 초 걸릴 수 있습니다.
+          풀이를 쓰는 중이에요… 첫 글자가 나오기까지 몇 초 걸릴 수 있습니다.
         </p>
       )}
 

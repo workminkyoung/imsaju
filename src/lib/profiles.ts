@@ -24,7 +24,9 @@ export interface Profile {
 
 /**
  * 처음 들어온 사람에게 보여 줄 예시 카드.
- * 라벨에 (예시)를 붙여 지워도 되는 것임을 분명히 한다.
+ *
+ * "예시"라는 표시는 메모에만 넣는다. 라벨은 그대로 풀이 프롬프트의 이름이 되므로,
+ * 여기에 "(예시)"가 섞이면 "나 (예시) 프로님" 같은 호칭이 나온다.
  */
 function sampleProfiles(): Profile[] {
   const now = Date.now();
@@ -49,13 +51,13 @@ function sampleProfiles(): Profile[] {
   };
 
   return [
-    make('나 (예시)', '내 카드로 바꿔 쓰세요', {
+    make('민경', '예시 카드 — 내 정보로 바꿔 쓰세요', {
       ...common, year: 1992, month: 6, day: 11, hour: 8, minute: 40, gender: 'female',
     }, 0),
-    make('김팀장 (예시)', '직속 상사', {
+    make('김팀장', '예시 카드 — 직속 상사', {
       ...common, year: 1978, month: 11, day: 3, hour: 14, minute: 20, gender: 'male',
     }, 1),
-    make('이주임 (예시)', '같은 팀 후임', {
+    make('이주임', '예시 카드 — 같은 팀 후임', {
       ...common, year: 1997, month: 2, day: 27, hour: 22, minute: 5, gender: 'male',
     }, 2),
   ];

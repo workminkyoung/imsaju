@@ -188,7 +188,7 @@ export default function CompatibilityPage() {
             endpoint="/api/compatibility/reading"
             body={{ a: a.input, b: b.input, relationship }}
             title="궁합 풀이"
-            description="위 궁합 계산을 근거로 Gemini가 해석합니다. 이 단계에서만 AI를 사용합니다."
+            description="위 궁합 계산을 그대로 근거 삼아 풀이해 드려요. 이 단계에서만 AI를 씁니다."
             actionLabel="궁합 풀이 생성"
           />
         </div>
