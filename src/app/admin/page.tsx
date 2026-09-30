@@ -91,6 +91,23 @@ export default function AdminPage() {
     }
   }
 
+  /**
+   * 세션을 끊는다.
+   *
+   * 세션이 12시간짜리라 로그아웃이 없으면 자리를 비웠을 때 그대로 열려 있고,
+   * 로그인이 실제로 되는지 확인할 방법도 없다.
+   */
+  async function logout() {
+    await fetch('/api/admin/login', { method: 'DELETE' });
+    setAuthed(false);
+    setData(null);
+    setTemplate('');
+    setLoginError('');
+    setMessage('');
+    setRendered('');
+    setTestResult('');
+  }
+
   async function save() {
     setBusy(true);
     setMessage('');
@@ -192,9 +209,18 @@ export default function AdminPage() {
       <section className="card">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-base font-semibold">프롬프트 편집</h2>
-          <span className="text-xs text-[var(--text-muted)]">
-            {template.length.toLocaleString()}자
-          </span>
+          <div className="flex items-baseline gap-3">
+            <span className="text-xs text-[var(--text-muted)]">
+              {template.length.toLocaleString()}자
+            </span>
+            <button
+              type="button"
+              onClick={logout}
+              className="text-xs text-[var(--text-muted)] underline-offset-2 transition hover:text-[var(--accent)] hover:underline"
+            >
+              로그아웃
+            </button>
+          </div>
         </div>
 
         {/* 어느 프롬프트를 고치는지 항상 보이게 둔다 */}
