@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   try {
     const { chartA, chartB, compatibility, relationship } = parseAndCompute(await request.json());
     prompt = renderPrompt(
-      loadPrompt('compatibility'),
+      await loadPrompt('compatibility'),
       buildCompatibilityVariables(chartA, chartB, compatibility, relationship),
     );
   } catch (error) {

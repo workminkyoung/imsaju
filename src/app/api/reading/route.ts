@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   try {
     const input = parseSajuInput(await request.json());
     const chart = computeSaju(input);
-    prompt = renderPrompt(loadPrompt('reading'), buildVariables(chart));
+    prompt = renderPrompt(await loadPrompt('reading'), buildVariables(chart));
   } catch (error) {
     if (error instanceof ValidationError) return errorResponse(error.message, 400);
     const message = error instanceof Error ? error.message : '만세력을 계산하지 못했습니다.';

@@ -16,6 +16,7 @@ import {
   buildCompatibilityVariables,
   buildVariables,
   hasEnvOverride,
+  promptStorageInfo,
   isPromptKind,
   loadDefaultPrompt,
   loadPrompt,
@@ -73,11 +74,13 @@ export async function GET(request: Request) {
   return NextResponse.json({
     kind,
     kinds: PROMPT_KINDS.map((k) => ({ id: k, label: PROMPT_KIND_LABEL[k] })),
-    template: loadPrompt(kind),
+    template: await loadPrompt(kind),
     defaultTemplate: loadDefaultPrompt(kind),
     systemInstruction: SYSTEM_INSTRUCTIONS[kind],
     variables: PROMPT_VARIABLES[kind],
     envOverride: hasEnvOverride(kind),
+    // 저장이 오래 남는 환경인지 화면에서 알려 줘야 한다.
+    storage: promptStorageInfo(),
   });
 }
 
@@ -94,13 +97,13 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: '프롬프트가 너무 깁니다 (5만 자 제한).' }, { status: 400 });
   }
 
-  return NextResponse.json(savePrompt(kind, body.template));
+  return NextResponse.json(await savePrompt(kind, body.template));
 }
 
 export async function DELETE(request: Request) {
   if (!(await isAuthenticated())) return unauthorized();
   const kind = kindOf(request);
-  resetPrompt(kind);
+  await resetPrompt(kind);
   return NextResponse.json({ ok: true, template: loadDefaultPrompt(kind) });
 }
 
@@ -113,7 +116,7 @@ export async function POST(request: Request) {
 
   const body = (await request.json()) as Record<string, unknown>;
   const kind = kindOf(request, body);
-  const template = typeof body.template === 'string' ? body.template : loadPrompt(kind);
+  const template = typeof body.template === 'string' ? body.template : await loadPrompt(kind);
 
   const rendered = renderSample(kind, template);
 

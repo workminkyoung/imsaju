@@ -11,6 +11,8 @@ interface PromptData {
   systemInstruction: string;
   variables: ReadonlyArray<{ key: string; description: string }>;
   envOverride: boolean;
+  /** 수정본을 어디에 보관하는지, 그리고 그게 오래 남는지 */
+  storage: { name: string; durable: boolean };
 }
 
 type Tab = 'edit' | 'preview' | 'test';
@@ -206,8 +208,16 @@ export default function AdminPage() {
         {data?.envOverride && (
           <p className="mt-2 rounded-lg p-2.5 text-xs leading-relaxed"
             style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
-            현재 <code>SAJU_PROMPT</code> 환경변수가 설정돼 있어 그 값이 우선 적용됩니다.
-            여기서 저장해도 반영되지 않습니다.
+            환경변수가 설정돼 있어 그 값이 우선 적용됩니다. 여기서 저장해도 반영되지 않습니다.
+          </p>
+        )}
+
+        {data && !data.storage.durable && (
+          <p className="mt-2 rounded-lg p-2.5 text-xs leading-relaxed"
+            style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
+            이 서버는 디스크에 쓸 수 없어 수정본이 <strong>{data.storage.name}</strong> 에만 남습니다.
+            서버가 재시작하거나 다른 인스턴스로 요청이 가면 기본값으로 돌아갑니다.
+            영구 반영하려면 환경변수 <code>SAJU_PROMPT_{kind.toUpperCase()}</code> 에 넣으세요.
           </p>
         )}
 

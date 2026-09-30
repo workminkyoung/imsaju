@@ -1,30 +1,23 @@
 /**
- * 프롬프트 템플릿의 저장·로드·변수 치환.
+ * 프롬프트 템플릿의 로드·저장·변수 치환.
  *
  * 두 종류가 있다 — 개인 사주풀이(reading)와 궁합 풀이(compatibility).
- * 기본 템플릿은 레포에 커밋된 prompts/ 아래에 있고, 관리자가 수정하면 data/ 에 저장한다.
- * 파일 쓰기가 막힌 배포 환경에서는 프로세스 메모리에만 남는다(재시작하면 기본값으로).
+ * 기본 템플릿은 레포에 커밋된 prompts/ 아래에 있고, 항상 읽을 수 있다.
+ *
+ * 관리자가 고친 값을 **어디에 보관할지는 여기서 정하지 않는다.** `promptStore.ts` 가
+ * 환경에 맞는 저장소를 고른다. 호스팅을 옮겨도 이 파일은 그대로다.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { CompatibilityResult } from './saju/compatibility';
 import type { SajuChart } from './saju/types';
 import { ELEMENTS } from './saju/constants';
 import { describeRelationship, type Relationship } from './relationship';
+import { PROMPT_KINDS, type PromptKind } from './promptKind';
+import { getPromptStore } from './promptStore';
 
-/** 편집 가능한 프롬프트의 종류 */
-export const PROMPT_KINDS = ['reading', 'compatibility'] as const;
-export type PromptKind = (typeof PROMPT_KINDS)[number];
-
-export const PROMPT_KIND_LABEL: Record<PromptKind, string> = {
-  reading: '개인 사주풀이',
-  compatibility: '궁합 풀이',
-};
-
-export function isPromptKind(value: unknown): value is PromptKind {
-  return typeof value === 'string' && (PROMPT_KINDS as readonly string[]).includes(value);
-}
+export { PROMPT_KINDS, PROMPT_KIND_LABEL, isPromptKind, type PromptKind } from './promptKind';
 
 const DEFAULT_PROMPT_FILE: Record<PromptKind, string> = {
   reading: 'default.md',
@@ -38,14 +31,6 @@ const ENV_OVERRIDE: Record<PromptKind, string> = {
 
 const defaultPath = (kind: PromptKind) =>
   join(process.cwd(), 'prompts', DEFAULT_PROMPT_FILE[kind]);
-
-const customPath = (kind: PromptKind) => join(process.cwd(), 'data', `prompt-${kind}.md`);
-
-/** kind 개념이 생기기 전에 쓰던 경로. 로컬 수정본이 날아가지 않게 읽어만 준다. */
-const LEGACY_READING_PATH = join(process.cwd(), 'data', 'prompt.md');
-
-/** 파일 저장이 불가능한 환경에서의 대체 보관소 */
-const inMemoryPrompt = new Map<PromptKind, string>();
 
 /** LLM에 고정으로 주는 역할 지시. 관리자가 바꿀 수 없다. */
 export const SYSTEM_INSTRUCTION = `당신은 한국의 전통 명리학 상담가입니다.
@@ -106,27 +91,20 @@ export function loadDefaultPrompt(kind: PromptKind): string {
   return readFileSync(defaultPath(kind), 'utf8');
 }
 
-/** 관리자가 저장한 템플릿이 있으면 그것, 없으면 기본값. */
-export function loadPrompt(kind: PromptKind): string {
-  const override = process.env[ENV_OVERRIDE[kind]] ?? (kind === 'reading' ? process.env.SAJU_PROMPT : undefined);
+/**
+ * 실제로 쓸 템플릿.
+ *
+ * 우선순위: 환경변수 > 관리자가 저장한 값 > 레포의 기본값.
+ * 환경변수를 맨 위에 두는 이유는 서버리스처럼 저장이 불안정한 환경에서
+ * 이것이 유일하게 확실한 방법이기 때문이다.
+ */
+export async function loadPrompt(kind: PromptKind): Promise<string> {
+  const override =
+    process.env[ENV_OVERRIDE[kind]] ?? (kind === 'reading' ? process.env.SAJU_PROMPT : undefined);
   if (override) return override;
 
-  const inMemory = inMemoryPrompt.get(kind);
-  if (inMemory !== undefined) return inMemory;
-
-  const candidates = kind === 'reading'
-    ? [customPath(kind), LEGACY_READING_PATH]
-    : [customPath(kind)];
-
-  for (const path of candidates) {
-    if (!existsSync(path)) continue;
-    try {
-      return readFileSync(path, 'utf8');
-    } catch {
-      // 읽기 실패는 기본값으로 조용히 넘어간다.
-    }
-  }
-  return loadDefaultPrompt(kind);
+  const saved = await getPromptStore().read(kind);
+  return saved ?? loadDefaultPrompt(kind);
 }
 
 /** 환경변수가 프롬프트를 덮어쓰고 있는지 (관리자 화면에서 안내한다) */
@@ -141,35 +119,48 @@ export interface SavePromptResult {
   note?: string;
 }
 
-/** 관리자 수정 저장. 파일이 안 되면 메모리에라도 남기고 그 사실을 알린다. */
-export function savePrompt(kind: PromptKind, text: string): SavePromptResult {
-  inMemoryPrompt.set(kind, text);
+/**
+ * 관리자 수정 저장.
+ *
+ * 저장은 됐지만 **오래 남지 않는** 경우(서버리스 메모리)를 성공으로 뭉뚱그리지 않는다.
+ * 그러면 관리자는 반영된 줄 알고 나갔다가 나중에 원래대로 돌아간 걸 보게 된다.
+ */
+export async function savePrompt(kind: PromptKind, text: string): Promise<SavePromptResult> {
+  const store = getPromptStore();
   try {
-    mkdirSync(join(process.cwd(), 'data'), { recursive: true });
-    writeFileSync(customPath(kind), text, 'utf8');
-    return { persisted: true };
+    await store.write(kind, text);
   } catch {
     return {
       persisted: false,
       note:
-        '파일 시스템이 읽기 전용이라 이번 실행 동안만 적용됩니다. ' +
-        `영구 반영하려면 prompts/${DEFAULT_PROMPT_FILE[kind]} 에 커밋하거나 ` +
-        `${ENV_OVERRIDE[kind]} 환경변수로 설정하세요.`,
+        '저장에 실패했습니다. ' +
+        `${ENV_OVERRIDE[kind]} 환경변수로 설정하거나 prompts/${DEFAULT_PROMPT_FILE[kind]} 에 커밋하세요.`,
     };
   }
+
+  if (!store.durable) {
+    return {
+      persisted: false,
+      note:
+        `이 환경은 디스크에 쓸 수 없어 ${store.name} 에만 담았습니다. ` +
+        '서버가 재시작하거나 다른 인스턴스로 요청이 가면 기본값으로 돌아갑니다. ' +
+        `영구 반영하려면 ${ENV_OVERRIDE[kind]} 환경변수에 넣거나 ` +
+        `prompts/${DEFAULT_PROMPT_FILE[kind]} 에 커밋하세요.`,
+    };
+  }
+
+  return { persisted: true };
 }
 
 /** 기본값으로 되돌린다. */
-export function resetPrompt(kind: PromptKind): void {
-  inMemoryPrompt.delete(kind);
-  const fallback = loadDefaultPrompt(kind);
-  for (const path of [customPath(kind), ...(kind === 'reading' ? [LEGACY_READING_PATH] : [])]) {
-    try {
-      if (existsSync(path)) writeFileSync(path, fallback, 'utf8');
-    } catch {
-      // 무시 — 메모리 초기화만으로도 기본값으로 돌아간다.
-    }
-  }
+export async function resetPrompt(kind: PromptKind): Promise<void> {
+  await getPromptStore().clear(kind);
+}
+
+/** 관리자 화면에 보여 줄 저장소 상태 */
+export function promptStorageInfo(): { name: string; durable: boolean } {
+  const store = getPromptStore();
+  return { name: store.name, durable: store.durable };
 }
 
 // ── 변수 치환 ─────────────────────────────────────────────────────────────
