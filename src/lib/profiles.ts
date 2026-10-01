@@ -9,7 +9,7 @@
 
 import type { SajuInput } from './saju/types';
 
-const STORAGE_KEY = 'imsaju.profiles.v1';
+const STORAGE_KEY = 'imsaju.profiles.v2';
 
 export interface Profile {
   id: string;
