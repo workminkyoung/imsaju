@@ -51,14 +51,14 @@ function sampleProfiles(): Profile[] {
   };
 
   return [
-    make('민경', '예시 카드 — 내 정보로 바꿔 쓰세요', {
-      ...common, year: 1992, month: 6, day: 11, hour: 8, minute: 40, gender: 'female',
+    make('민경', '예시 카드 — ID팀 사원', {
+      ...common, year: 1997, month: 3, day: 24, hour: 8, minute: 20, gender: 'female',
     }, 0),
-    make('김팀장', '예시 카드 — 직속 상사', {
-      ...common, year: 1978, month: 11, day: 3, hour: 14, minute: 20, gender: 'male',
+    make('혜린', '예시 카드 — ID팀 사원', {
+      ...common, year: 1998, month: 3, day: 27, hour: 17, minute: 20, gender: 'female',
     }, 1),
-    make('이주임', '예시 카드 — 같은 팀 후임', {
-      ...common, year: 1997, month: 2, day: 27, hour: 22, minute: 5, gender: 'male',
+    make('경주', '예시 카드 — ID팀 사원', {
+      ...common, year: 1994, month: 8, day: 18, hour: 4, minute: 30, gender: 'female',
     }, 2),
   ];
 }
