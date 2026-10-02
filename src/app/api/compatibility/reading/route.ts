@@ -5,7 +5,7 @@
  */
 
 import { INTERRUPT_MARKER } from '@/lib/streamMarker';
-import { parseAndCompute } from '@/lib/compatibilityRequest';
+import { loadAndCompute } from '@/lib/compatibilityRequest';
 import {
   GeminiNotConfiguredError,
   GeminiUnavailableError,
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   let prompt: string;
 
   try {
-    const { chartA, chartB, compatibility, relationship } = parseAndCompute(await request.json());
+    const { chartA, chartB, compatibility, relationship } = await loadAndCompute(await request.json());
     prompt = renderPrompt(
       await loadPrompt('compatibility'),
       buildCompatibilityVariables(chartA, chartB, compatibility, relationship),

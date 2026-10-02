@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import type { CompatibilityResult as Result } from '@/lib/saju/compatibility';
-import type { SajuChart } from '@/lib/saju/types';
 
 interface Props {
   result: Result;
   aName: string;
   bName: string;
-  chartA: SajuChart;
-  chartB: SajuChart;
+  /** 참고로 덧붙이는 신강·신약. 차트 전체를 받을 필요가 없다. */
+  strengthA: string;
+  strengthB: string;
 }
 
 /** 점수에 따라 막대 색을 바꾼다. 50이 중립. */
@@ -19,7 +19,7 @@ function scoreColor(score: number): string {
   return 'var(--fire)';
 }
 
-export function CompatibilityResult({ result, aName, bName, chartA, chartB }: Props) {
+export function CompatibilityResult({ result, aName, bName, strengthA, strengthB }: Props) {
   const [showRules, setShowRules] = useState(false);
 
   return (
@@ -166,7 +166,7 @@ export function CompatibilityResult({ result, aName, bName, chartA, chartB }: Pr
           </div>
 
           <p className="text-[11px] text-[var(--text-muted)]">
-            {aName}은 {chartA.analysis.strength.verdict}, {bName}은 {chartB.analysis.strength.verdict}
+            {aName}은 {strengthA}, {bName}은 {strengthB}
             으로 추정됩니다. 이 값은 점수에 직접 들어가지 않고 풀이에서 참고용으로 쓰입니다.
           </p>
         </div>

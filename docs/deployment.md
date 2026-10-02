@@ -22,6 +22,10 @@
 | `SAJU_PROMPT_COMPATIBILITY` | 아니오 | 궁합 풀이 프롬프트를 통째로 덮어쓴다 |
 | `PROMPT_STORE` | 아니오 | `file` \| `memory` \| (비움 = 자동 판별) |
 | `PROMPT_DATA_DIR` | 아니오 | 프롬프트 수정본을 둘 디렉터리. 기본 `./data` |
+| `UPSTASH_REDIS_REST_URL` | 서버리스면 예 | 사람 카드 저장소. Vercel 마켓플레이스에서 Upstash 를 붙이면 자동 주입된다 |
+| `UPSTASH_REDIS_REST_TOKEN` | 서버리스면 예 | 위와 한 쌍. `KV_REST_API_*` 이름으로 와도 받는다 |
+| `PROFILE_STORE` | 아니오 | `redis` \| `file` \| `memory` \| (비움 = 자동 판별) |
+| `PROFILE_DATA_DIR` | 아니오 | 파일 저장소를 쓸 때의 디렉터리. 기본 `./data` |
 
 `.env.example` 을 복사해서 채우면 된다.
 
@@ -64,6 +68,41 @@ class KvPromptStore implements PromptStore {
   async clear(kind) { /* … */ }
 }
 ```
+
+---
+
+## 사람 카드 저장 — 개인정보가 들어간다
+
+궁합 화면의 사람 카드는 **서버**에 저장된다. 여기에는 타인의 생년월일이 담기므로
+다루는 방식을 분명히 해 둔다.
+
+| 무엇을 | 어떻게 |
+| --- | --- |
+| 카드 목록 | **이름과 메모만** 내보낸다. 생년월일은 서버 밖으로 나가지 않는다 |
+| 수정·삭제 | 생년월일(YYMMDD)을 맞혀야 한다. 시도는 10분에 8번으로 제한 |
+| 궁합 결과 | 입력 원문·계산 근거·대운·세운·생년을 모두 뺀 축소본만 보낸다 |
+| 보관 기간 | 마지막 사용 후 **30일**이 지나면 자동 삭제 (Redis TTL) |
+
+**완전히 감춰지지는 않는다.** 사주 네 기둥 자체가 태어난 해와 날짜를 상당히 좁혀 준다.
+만세력을 보여 주는 이상 피할 수 없고, 생년월일로 거는 잠금도 경우의 수가 3만 남짓이라
+횟수 제한이 없으면 뚫린다. 그래서 제한을 두는 쪽에 무게를 뒀다.
+
+저장소는 `src/lib/profileStore.ts` 가 고른다. Upstash 자격증명이 있으면 Redis,
+없으면 디스크에 써 보고, 그것도 안 되면 메모리로 떨어진다.
+
+### Vercel 에서 Upstash 붙이기
+
+1. 프로젝트 → **Storage** → **Marketplace** → Upstash Redis 생성
+2. 프로젝트에 연결하면 `UPSTASH_REDIS_REST_URL`·`UPSTASH_REDIS_REST_TOKEN` 이 자동으로 들어온다
+3. 재배포
+
+붙이지 않으면 서버리스에서는 메모리로 떨어져 **재시작할 때마다 카드가 사라진다.**
+그 상태를 화면과 `/api/health` 가 알려 준다.
+
+### 다른 저장소로 바꾸려면
+
+`profileStore.ts` 에 `ProfileStore` 구현을 하나 더하고 `createStore()` 에 분기를 넣으면 된다.
+읽기·쓰기가 이미 `async` 라서 부르는 쪽은 손대지 않아도 된다.
 
 ---
 

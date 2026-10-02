@@ -3,6 +3,19 @@
 import type { Element } from '@/lib/saju/constants';
 import type { Pillar, SajuChart } from '@/lib/saju/types';
 
+/**
+ * 원국 표가 실제로 쓰는 부분만.
+ *
+ * 궁합 화면은 생년월일을 뺀 축소본을 받으므로 SajuChart 전체를 요구하면 안 된다.
+ */
+export type ManseChart = Pick<
+  SajuChart,
+  'pillars' | 'dayMaster' | 'voidBranches' | 'zodiac'
+> & {
+  /** 궁합 화면에서는 생년을 평문으로 넘기지 않으므로 없을 수 있다. 그때는 띠만 보여 준다. */
+  sajuYear?: number;
+};
+
 const ELEMENT_VAR: Record<Element, string> = {
   목: 'var(--wood)',
   화: 'var(--fire)',
@@ -55,7 +68,7 @@ function Cell({ label, pillar }: { label: string; pillar: Pillar | null }) {
   );
 }
 
-export function ManseTable({ chart }: { chart: SajuChart }) {
+export function ManseTable({ chart }: { chart: ManseChart }) {
   const { pillars } = chart;
 
   return (
@@ -70,7 +83,7 @@ export function ManseTable({ chart }: { chart: SajuChart }) {
             </strong>{' '}
             {chart.dayMaster.yinYang}{chart.dayMaster.element}
           </span>
-          <span>{chart.sajuYear}년 {chart.zodiac}띠</span>
+          <span>{chart.sajuYear ? `${chart.sajuYear}년 ` : ''}{chart.zodiac}띠</span>
           <span>공망 <span className="ganji">{chart.voidBranches.join('')}</span></span>
         </div>
       </div>

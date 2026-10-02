@@ -1,21 +1,26 @@
 /**
  * 궁합 계산 API.
  *
- * 개인 만세력과 마찬가지로 LLM을 쓰지 않는다. Gemini 키가 없어도, 무료 티어가 혼잡해도 동작한다.
+ * 개인 만세력과 마찬가지로 LLM을 쓰지 않는다.
+ * 응답에서는 생년월일 원문을 빼고 간지와 분석만 내보낸다.
  */
 
 import { NextResponse } from 'next/server';
-import { parseAndCompute } from '@/lib/compatibilityRequest';
+import { loadAndCompute, toPublicChart } from '@/lib/compatibilityRequest';
 import { ValidationError } from '@/lib/validate';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
-    const { chartA, chartB, compatibility, relationship } = parseAndCompute(await request.json());
+    const { a, b, chartA, chartB, compatibility, relationship } = await loadAndCompute(
+      await request.json(),
+    );
     return NextResponse.json({
-      chartA,
-      chartB,
+      chartA: toPublicChart(chartA),
+      chartB: toPublicChart(chartB),
+      names: { a: a.label, b: b.label },
       compatibility,
       relationship: relationship.id,
     });

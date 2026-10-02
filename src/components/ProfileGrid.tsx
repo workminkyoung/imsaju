@@ -1,27 +1,27 @@
 'use client';
 
-import { describeProfile, type Profile } from '@/lib/profiles';
+import type { PublicProfile, StorageInfo } from '@/lib/profiles';
 
 interface Props {
-  profiles: Profile[];
+  profiles: PublicProfile[];
   /** 고른 순서대로. [0]=A, [1]=B */
   selected: string[];
   onToggle: (id: string) => void;
-  onEdit: (profile: Profile) => void;
-  onDelete: (id: string) => void;
+  /** 「내 카드 수정하기」 — 생년월일 확인 창을 연다 */
+  onRequestEdit: (profile: PublicProfile) => void;
   onAdd: () => void;
-  /** localStorage 저장이 막힌 환경이면 경고를 띄운다. */
-  storageBlocked: boolean;
+  storage: StorageInfo | null;
+  loading: boolean;
 }
 
 export function ProfileGrid({
   profiles,
   selected,
   onToggle,
-  onEdit,
-  onDelete,
+  onRequestEdit,
   onAdd,
-  storageBlocked,
+  storage,
+  loading,
 }: Props) {
   return (
     <section className="card">
@@ -42,17 +42,19 @@ export function ProfileGrid({
         </button>
       </div>
 
-      {storageBlocked && (
+      {storage && !storage.durable && (
         <p
           className="mt-3 rounded-lg p-2.5 text-xs leading-relaxed"
           style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
         >
-          이 브라우저에 카드를 저장하지 못했습니다(시크릿 모드이거나 저장이 차단된 상태). 지금 만든
-          카드는 새로고침하면 사라집니다.
+          이 서버는 카드를 오래 보관하지 못합니다(<strong>{storage.name}</strong>). 재시작하면
+          사라지니, 운영에는 저장소를 연결해 주세요.
         </p>
       )}
 
-      {profiles.length === 0 ? (
+      {loading ? (
+        <p className="mt-6 text-center text-sm text-[var(--text-muted)]">카드를 불러오는 중…</p>
+      ) : profiles.length === 0 ? (
         <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
           카드가 없습니다. 「+ 카드 추가」로 두 명을 등록해 주세요.
         </p>
@@ -64,7 +66,7 @@ export function ProfileGrid({
             return (
               <div
                 key={profile.id}
-                className="relative rounded-lg border p-3 transition"
+                className="rounded-lg border p-3 transition"
                 style={{
                   borderColor: picked ? 'var(--accent)' : 'var(--border)',
                   background: picked ? 'var(--accent-soft)' : 'transparent',
@@ -87,30 +89,20 @@ export function ProfileGrid({
                     )}
                     <span className="truncate text-sm font-medium">{profile.label}</span>
                   </div>
-                  <p className="mt-1.5 text-[11px] leading-relaxed text-[var(--text-muted)]">
-                    {describeProfile(profile)}
-                  </p>
                   {profile.memo && (
-                    <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">{profile.memo}</p>
+                    <p className="mt-1 truncate text-[11px] text-[var(--text-muted)]">
+                      {profile.memo}
+                    </p>
                   )}
                 </button>
 
-                <div className="mt-2.5 flex gap-2 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={() => onEdit(profile)}
-                    className="text-[var(--text-muted)] underline-offset-2 transition hover:text-[var(--accent)] hover:underline"
-                  >
-                    수정
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onDelete(profile.id)}
-                    className="text-[var(--text-muted)] underline-offset-2 transition hover:text-[var(--accent)] hover:underline"
-                  >
-                    삭제
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => onRequestEdit(profile)}
+                  className="mt-2.5 text-[11px] text-[var(--text-muted)] underline-offset-2 transition hover:text-[var(--accent)] hover:underline"
+                >
+                  내 카드 수정하기
+                </button>
               </div>
             );
           })}
@@ -118,7 +110,9 @@ export function ProfileGrid({
       )}
 
       <p className="mt-4 text-[11px] leading-relaxed text-[var(--text-muted)]">
-        카드는 이 브라우저에만 저장됩니다. 만세력을 계산할 때만 서버로 보내고 서버에는 남기지 않습니다.
+        카드에는 이름만 표시되고 생년월일은 서버에만 보관합니다. 수정·삭제는 본인 생년월일을
+        입력해야 할 수 있습니다.
+        {storage && ` 마지막 사용 후 ${storage.ttlDays}일이 지나면 자동으로 삭제됩니다.`}
       </p>
     </section>
   );

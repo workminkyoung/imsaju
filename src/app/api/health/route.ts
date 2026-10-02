@@ -13,6 +13,7 @@
 import { NextResponse } from 'next/server';
 import { isConfigured } from '@/lib/gemini';
 import { promptStorageInfo } from '@/lib/prompt';
+import { profileStorageInfo } from '@/lib/profileStore';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -70,6 +71,7 @@ export async function GET() {
       gemini: isConfigured() ? 'configured' : 'missing-key',
       adminConfigured: Boolean(process.env.ADMIN_PASSWORD),
       promptStorage: promptStorageInfo(),
+      profileStorage: profileStorageInfo(),
       node: process.version,
       time: new Date().toISOString(),
     },

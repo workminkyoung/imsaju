@@ -2,44 +2,76 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { BirthDateGate } from '@/components/BirthDateGate';
 import { CompatibilityResult } from '@/components/CompatibilityResult';
 import { ManseTable } from '@/components/ManseTable';
 import { ProfileEditor } from '@/components/ProfileEditor';
 import { ProfileGrid } from '@/components/ProfileGrid';
 import { ReadingPanel } from '@/components/ReadingPanel';
 import { RelationshipPicker } from '@/components/RelationshipPicker';
-import { loadProfiles, saveProfiles, type Profile } from '@/lib/profiles';
+import {
+  createProfile,
+  deleteProfile,
+  fetchProfiles,
+  migrateLegacyProfiles,
+  updateProfile,
+  type FullProfile,
+  type PublicProfile,
+  type StorageInfo,
+} from '@/lib/profiles';
 import { DEFAULT_RELATIONSHIP, type RelationshipId } from '@/lib/relationship';
+import type { PublicChart } from '@/lib/compatibilityRequest';
 import type { CompatibilityResult as Result } from '@/lib/saju/compatibility';
-import type { SajuChart } from '@/lib/saju/types';
 
 interface ApiResponse {
-  chartA: SajuChart;
-  chartB: SajuChart;
+  chartA: PublicChart;
+  chartB: PublicChart;
+  names: { a: string; b: string };
   compatibility: Result;
   error?: string;
 }
 
+/** 수정 흐름의 단계 — 확인 창 → 편집기 */
+type EditState =
+  | { mode: 'none' }
+  | { mode: 'new' }
+  | { mode: 'gate'; profile: PublicProfile }
+  | { mode: 'edit'; profile: FullProfile; birthDate: string };
+
 export default function CompatibilityPage() {
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [storageBlocked, setStorageBlocked] = useState(false);
+  const [profiles, setProfiles] = useState<PublicProfile[]>([]);
+  const [storage, setStorage] = useState<StorageInfo | null>(null);
+  const [listLoading, setListLoading] = useState(true);
   const [selected, setSelected] = useState<string[]>([]);
   const [relationship, setRelationship] = useState<RelationshipId>(DEFAULT_RELATIONSHIP);
 
-  const [editing, setEditing] = useState<Profile | 'new' | null>(null);
+  const [edit, setEdit] = useState<EditState>({ mode: 'none' });
   const [result, setResult] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
 
-  // localStorage 는 서버에 없으므로 마운트 후에 읽는다.
+  const reload = useCallback(async () => {
+    try {
+      const data = await fetchProfiles();
+      setProfiles(data.profiles);
+      setStorage(data.storage);
+      setError('');
+    } catch (err) {
+      setError((err as Error)?.message ?? '카드를 불러오지 못했습니다.');
+    } finally {
+      setListLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    setProfiles(loadProfiles());
-  }, []);
-
-  const persist = useCallback((next: Profile[]) => {
-    setProfiles(next);
-    setStorageBlocked(!saveProfiles(next));
-  }, []);
+    // 예전 브라우저 저장분이 있으면 먼저 서버로 올리고 목록을 받는다.
+    void (async () => {
+      const moved = await migrateLegacyProfiles();
+      if (moved > 0) setNotice(`이 브라우저에 있던 카드 ${moved}장을 서버로 옮겼습니다.`);
+      await reload();
+    })();
+  }, [reload]);
 
   const a = profiles.find((p) => p.id === selected[0]);
   const b = profiles.find((p) => p.id === selected[1]);
@@ -50,24 +82,8 @@ export default function CompatibilityPage() {
     setError('');
     setSelected((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
-      // 이미 둘을 골랐으면 먼저 고른 것을 밀어낸다.
       return prev.length >= 2 ? [prev[1], id] : [...prev, id];
     });
-  }
-
-  function saveProfile(profile: Profile) {
-    const exists = profiles.some((p) => p.id === profile.id);
-    persist(exists ? profiles.map((p) => (p.id === profile.id ? profile : p)) : [...profiles, profile]);
-    setEditing(null);
-    setResult(null);
-  }
-
-  function deleteProfile(id: string) {
-    const target = profiles.find((p) => p.id === id);
-    if (!confirm(`「${target?.label}」 카드를 삭제할까요?`)) return;
-    persist(profiles.filter((p) => p.id !== id));
-    setSelected((prev) => prev.filter((x) => x !== id));
-    setResult(null);
   }
 
   async function calculate() {
@@ -78,7 +94,7 @@ export default function CompatibilityPage() {
       const response = await fetch('/api/compatibility', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ a: a.input, b: b.input, relationship }),
+        body: JSON.stringify({ aId: a.id, bId: b.id, relationship }),
       });
       const data = (await response.json()) as ApiResponse;
 
@@ -99,14 +115,51 @@ export default function CompatibilityPage() {
     }
   }
 
-  if (editing) {
+  // ── 카드 편집 ──
+  async function saveNew(input: Parameters<typeof createProfile>[0], memo?: string) {
+    await createProfile(input, memo);
+    setEdit({ mode: 'none' });
+    setResult(null);
+    await reload();
+  }
+
+  async function saveEdit(
+    state: Extract<EditState, { mode: 'edit' }>,
+    input: Parameters<typeof createProfile>[0],
+    memo?: string,
+  ) {
+    await updateProfile(state.profile.id, state.birthDate, input, memo);
+    setEdit({ mode: 'none' });
+    setResult(null);
+    await reload();
+  }
+
+  async function removeCard(state: Extract<EditState, { mode: 'edit' }>) {
+    await deleteProfile(state.profile.id, state.birthDate);
+    setSelected((prev) => prev.filter((x) => x !== state.profile.id));
+    setEdit({ mode: 'none' });
+    setResult(null);
+    await reload();
+  }
+
+  if (edit.mode === 'new') {
+    return (
+      <main className="space-y-4">
+        <BackLink />
+        <ProfileEditor onSave={saveNew} onCancel={() => setEdit({ mode: 'none' })} />
+      </main>
+    );
+  }
+
+  if (edit.mode === 'edit') {
     return (
       <main className="space-y-4">
         <BackLink />
         <ProfileEditor
-          editing={editing === 'new' ? undefined : editing}
-          onSave={saveProfile}
-          onCancel={() => setEditing(null)}
+          editing={edit.profile}
+          onSave={(input, memo) => saveEdit(edit, input, memo)}
+          onDelete={() => removeCard(edit)}
+          onCancel={() => setEdit({ mode: 'none' })}
         />
       </main>
     );
@@ -116,15 +169,32 @@ export default function CompatibilityPage() {
     <main className="space-y-4">
       <BackLink />
 
+      {notice && (
+        <p
+          className="rounded-lg p-2.5 text-xs leading-relaxed"
+          style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+        >
+          {notice}
+        </p>
+      )}
+
       <ProfileGrid
         profiles={profiles}
         selected={selected}
         onToggle={toggle}
-        onEdit={(profile) => setEditing(profile)}
-        onDelete={deleteProfile}
-        onAdd={() => setEditing('new')}
-        storageBlocked={storageBlocked}
+        onRequestEdit={(profile) => setEdit({ mode: 'gate', profile })}
+        onAdd={() => setEdit({ mode: 'new' })}
+        storage={storage}
+        loading={listLoading}
       />
+
+      {edit.mode === 'gate' && (
+        <BirthDateGate
+          profile={edit.profile}
+          onVerified={(full, birthDate) => setEdit({ mode: 'edit', profile: full, birthDate })}
+          onCancel={() => setEdit({ mode: 'none' })}
+        />
+      )}
 
       {ready && (
         <>
@@ -134,7 +204,6 @@ export default function CompatibilityPage() {
             value={relationship}
             onChange={(id) => {
               setRelationship(id);
-              // 수치는 그대로지만 풀이 관점이 달라지므로 다시 계산하게 둔다.
               setResult(null);
             }}
           />
@@ -151,7 +220,7 @@ export default function CompatibilityPage() {
         </>
       )}
 
-      {!ready && profiles.length > 0 && (
+      {!ready && !listLoading && profiles.length > 0 && (
         <p className="text-center text-sm text-[var(--text-muted)]">
           카드를 {2 - selected.length}장 더 골라 주세요.
         </p>
@@ -167,26 +236,30 @@ export default function CompatibilityPage() {
         <div id="result" className="space-y-4 pt-2">
           <CompatibilityResult
             result={result.compatibility}
-            aName={a.label}
-            bName={b.label}
-            chartA={result.chartA}
-            chartB={result.chartB}
+            aName={result.names.a}
+            bName={result.names.b}
+            strengthA={result.chartA.analysis.strength.verdict}
+            strengthB={result.chartB.analysis.strength.verdict}
           />
 
           <div className="grid gap-4 lg:grid-cols-2">
             <div>
-              <h3 className="mb-2 text-sm font-medium text-[var(--text-muted)]">{a.label} 원국</h3>
+              <h3 className="mb-2 text-sm font-medium text-[var(--text-muted)]">
+                {result.names.a} 원국
+              </h3>
               <ManseTable chart={result.chartA} />
             </div>
             <div>
-              <h3 className="mb-2 text-sm font-medium text-[var(--text-muted)]">{b.label} 원국</h3>
+              <h3 className="mb-2 text-sm font-medium text-[var(--text-muted)]">
+                {result.names.b} 원국
+              </h3>
               <ManseTable chart={result.chartB} />
             </div>
           </div>
 
           <ReadingPanel
             endpoint="/api/compatibility/reading"
-            body={{ a: a.input, b: b.input, relationship }}
+            body={{ aId: a.id, bId: b.id, relationship }}
             title="궁합 풀이"
             description="위 궁합 계산을 그대로 근거 삼아 풀이해 드려요. 이 단계에서만 AI를 씁니다."
             actionLabel="궁합 풀이 생성"
