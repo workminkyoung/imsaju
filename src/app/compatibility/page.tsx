@@ -1,24 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { BirthDateGate } from '@/components/BirthDateGate';
+import { useSearchParams } from 'next/navigation';
 import { CompatibilityResult } from '@/components/CompatibilityResult';
 import { ManseTable } from '@/components/ManseTable';
-import { ProfileEditor } from '@/components/ProfileEditor';
-import { ProfileGrid } from '@/components/ProfileGrid';
 import { ReadingPanel } from '@/components/ReadingPanel';
 import { RelationshipPicker } from '@/components/RelationshipPicker';
-import {
-  createProfile,
-  deleteProfile,
-  fetchProfiles,
-  migrateLegacyProfiles,
-  updateProfile,
-  type FullProfile,
-  type PublicProfile,
-  type StorageInfo,
-} from '@/lib/profiles';
 import { DEFAULT_RELATIONSHIP, type RelationshipId } from '@/lib/relationship';
 import type { PublicChart } from '@/lib/compatibilityRequest';
 import type { CompatibilityResult as Result } from '@/lib/saju/compatibility';
@@ -31,136 +19,62 @@ interface ApiResponse {
   error?: string;
 }
 
-/** 수정 흐름의 단계 — 확인 창 → 편집기 */
-type EditState =
-  | { mode: 'none' }
-  | { mode: 'new' }
-  | { mode: 'gate'; profile: PublicProfile }
-  | { mode: 'edit'; profile: FullProfile; birthDate: string };
+/**
+ * 궁합 결과.
+ *
+ * 어떤 두 사람을 볼지는 메인 카드 테이블에서 정하고, 여기는 관계 설정과 결과만 맡는다.
+ * 카드 id 는 주소로 받으므로 새로고침해도 유지되고 링크로 공유할 수도 있다.
+ */
+function CompatibilityInner() {
+  const params = useSearchParams();
+  const aId = params.get('a') ?? '';
+  const bId = params.get('b') ?? '';
 
-export default function CompatibilityPage() {
-  const [profiles, setProfiles] = useState<PublicProfile[]>([]);
-  const [storage, setStorage] = useState<StorageInfo | null>(null);
-  const [listLoading, setListLoading] = useState(true);
-  const [selected, setSelected] = useState<string[]>([]);
   const [relationship, setRelationship] = useState<RelationshipId>(DEFAULT_RELATIONSHIP);
-
-  const [edit, setEdit] = useState<EditState>({ mode: 'none' });
   const [result, setResult] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
 
-  const reload = useCallback(async () => {
-    try {
-      const data = await fetchProfiles();
-      setProfiles(data.profiles);
-      setStorage(data.storage);
+  const calculate = useCallback(
+    async (relationshipId: RelationshipId) => {
+      if (!aId || !bId) return;
+      setLoading(true);
       setError('');
-    } catch (err) {
-      setError((err as Error)?.message ?? '카드를 불러오지 못했습니다.');
-    } finally {
-      setListLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    // 예전 브라우저 저장분이 있으면 먼저 서버로 올리고 목록을 받는다.
-    void (async () => {
-      const moved = await migrateLegacyProfiles();
-      if (moved > 0) setNotice(`이 브라우저에 있던 카드 ${moved}장을 서버로 옮겼습니다.`);
-      await reload();
-    })();
-  }, [reload]);
-
-  const a = profiles.find((p) => p.id === selected[0]);
-  const b = profiles.find((p) => p.id === selected[1]);
-  const ready = Boolean(a && b);
-
-  function toggle(id: string) {
-    setResult(null);
-    setError('');
-    setSelected((prev) => {
-      if (prev.includes(id)) return prev.filter((x) => x !== id);
-      return prev.length >= 2 ? [prev[1], id] : [...prev, id];
-    });
-  }
-
-  async function calculate() {
-    if (!a || !b) return;
-    setLoading(true);
-    setError('');
-    try {
-      const response = await fetch('/api/compatibility', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ aId: a.id, bId: b.id, relationship }),
-      });
-      const data = (await response.json()) as ApiResponse;
-
-      if (!response.ok || !data.compatibility) {
-        setError(data.error ?? '궁합을 계산하지 못했습니다.');
+      try {
+        const response = await fetch('/api/compatibility', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ aId, bId, relationship: relationshipId }),
+        });
+        const data = (await response.json()) as ApiResponse;
+        if (!response.ok || !data.compatibility) {
+          setError(data.error ?? '궁합을 계산하지 못했습니다.');
+          setResult(null);
+          return;
+        }
+        setResult(data);
+      } catch {
+        setError('서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.');
         setResult(null);
-        return;
+      } finally {
+        setLoading(false);
       }
-      setResult(data);
-      requestAnimationFrame(() => {
-        document.getElementById('result')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    } catch {
-      setError('서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.');
-      setResult(null);
-    } finally {
-      setLoading(false);
-    }
-  }
+    },
+    [aId, bId],
+  );
 
-  // ── 카드 편집 ──
-  async function saveNew(input: Parameters<typeof createProfile>[0], memo?: string) {
-    await createProfile(input, memo);
-    setEdit({ mode: 'none' });
-    setResult(null);
-    await reload();
-  }
+  // 들어오자마자 한 번 계산한다. 관계는 수치를 바꾸지 않으므로 기본값으로 먼저 보여 준다.
+  useEffect(() => {
+    void calculate(DEFAULT_RELATIONSHIP);
+  }, [calculate]);
 
-  async function saveEdit(
-    state: Extract<EditState, { mode: 'edit' }>,
-    input: Parameters<typeof createProfile>[0],
-    memo?: string,
-  ) {
-    await updateProfile(state.profile.id, state.birthDate, input, memo);
-    setEdit({ mode: 'none' });
-    setResult(null);
-    await reload();
-  }
-
-  async function removeCard(state: Extract<EditState, { mode: 'edit' }>) {
-    await deleteProfile(state.profile.id, state.birthDate);
-    setSelected((prev) => prev.filter((x) => x !== state.profile.id));
-    setEdit({ mode: 'none' });
-    setResult(null);
-    await reload();
-  }
-
-  if (edit.mode === 'new') {
+  if (!aId || !bId) {
     return (
       <main className="space-y-4">
         <BackLink />
-        <ProfileEditor onSave={saveNew} onCancel={() => setEdit({ mode: 'none' })} />
-      </main>
-    );
-  }
-
-  if (edit.mode === 'edit') {
-    return (
-      <main className="space-y-4">
-        <BackLink />
-        <ProfileEditor
-          editing={edit.profile}
-          onSave={(input, memo) => saveEdit(edit, input, memo)}
-          onDelete={() => removeCard(edit)}
-          onCancel={() => setEdit({ mode: 'none' })}
-        />
+        <div className="card text-sm">
+          볼 카드가 정해지지 않았습니다. 카드 테이블에서 두 장을 위 칸에 올려 주세요.
+        </div>
       </main>
     );
   }
@@ -169,61 +83,19 @@ export default function CompatibilityPage() {
     <main className="space-y-4">
       <BackLink />
 
-      {notice && (
-        <p
-          className="rounded-lg p-2.5 text-xs leading-relaxed"
-          style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-        >
-          {notice}
-        </p>
-      )}
-
-      <ProfileGrid
-        profiles={profiles}
-        selected={selected}
-        onToggle={toggle}
-        onRequestEdit={(profile) => setEdit({ mode: 'gate', profile })}
-        onAdd={() => setEdit({ mode: 'new' })}
-        storage={storage}
-        loading={listLoading}
+      <RelationshipPicker
+        aName={result?.names.a ?? 'A'}
+        bName={result?.names.b ?? 'B'}
+        value={relationship}
+        onChange={(id) => {
+          setRelationship(id);
+          // 수치는 그대로지만 풀이 관점이 달라지므로 다시 받아 둔다.
+          void calculate(id);
+        }}
       />
 
-      {edit.mode === 'gate' && (
-        <BirthDateGate
-          profile={edit.profile}
-          onVerified={(full, birthDate) => setEdit({ mode: 'edit', profile: full, birthDate })}
-          onCancel={() => setEdit({ mode: 'none' })}
-        />
-      )}
-
-      {ready && (
-        <>
-          <RelationshipPicker
-            aName={a!.label}
-            bName={b!.label}
-            value={relationship}
-            onChange={(id) => {
-              setRelationship(id);
-              setResult(null);
-            }}
-          />
-
-          <button
-            type="button"
-            onClick={calculate}
-            disabled={loading}
-            className="w-full rounded-lg px-4 py-3 text-sm font-semibold text-white transition disabled:opacity-50"
-            style={{ background: 'var(--accent)' }}
-          >
-            {loading ? '계산 중…' : `${a!.label} ↔ ${b!.label} 궁합 보기`}
-          </button>
-        </>
-      )}
-
-      {!ready && !listLoading && profiles.length > 0 && (
-        <p className="text-center text-sm text-[var(--text-muted)]">
-          카드를 {2 - selected.length}장 더 골라 주세요.
-        </p>
+      {loading && !result && (
+        <p className="py-10 text-center text-sm text-[var(--text-muted)]">궁합을 계산하는 중…</p>
       )}
 
       {error && (
@@ -232,8 +104,8 @@ export default function CompatibilityPage() {
         </div>
       )}
 
-      {result && a && b && (
-        <div id="result" className="space-y-4 pt-2">
+      {result && (
+        <div className="space-y-4">
           <CompatibilityResult
             result={result.compatibility}
             aName={result.names.a}
@@ -259,7 +131,7 @@ export default function CompatibilityPage() {
 
           <ReadingPanel
             endpoint="/api/compatibility/reading"
-            body={{ aId: a.id, bId: b.id, relationship }}
+            body={{ aId, bId, relationship }}
             title="궁합 풀이"
             description="위 궁합 계산을 그대로 근거 삼아 풀이해 드려요. 이 단계에서만 AI를 씁니다."
             actionLabel="궁합 풀이 생성"
@@ -276,7 +148,16 @@ function BackLink() {
       href="/"
       className="inline-block text-xs text-[var(--text-muted)] transition hover:text-[var(--accent)]"
     >
-      ← 처음으로
+      ← 카드 테이블로
     </Link>
+  );
+}
+
+export default function CompatibilityPage() {
+  // useSearchParams 는 Suspense 안에 있어야 한다.
+  return (
+    <Suspense fallback={<main className="py-10 text-center text-sm text-[var(--text-muted)]">불러오는 중…</main>}>
+      <CompatibilityInner />
+    </Suspense>
   );
 }

@@ -3,6 +3,9 @@
 import { ELEMENTS, type Element } from '@/lib/saju/constants';
 import type { SajuChart } from '@/lib/saju/types';
 
+/** 분석 표가 실제로 쓰는 부분만. 생년월일이 빠진 축소본도 받을 수 있어야 한다. */
+export type AnalysisChart = Pick<SajuChart, 'analysis'>;
+
 const ELEMENT_VAR: Record<Element, string> = {
   목: 'var(--wood)',
   화: 'var(--fire)',
@@ -11,7 +14,7 @@ const ELEMENT_VAR: Record<Element, string> = {
   수: 'var(--water)',
 };
 
-export function Analysis({ chart }: { chart: SajuChart }) {
+export function Analysis({ chart }: { chart: AnalysisChart }) {
   const { elements, tenGods, strength } = chart.analysis;
   const maxPercent = Math.max(...ELEMENTS.map((e) => elements.percentages[e]), 1);
 

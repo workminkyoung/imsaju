@@ -4,6 +4,9 @@ import { useMemo } from 'react';
 import type { Element } from '@/lib/saju/constants';
 import type { SajuChart } from '@/lib/saju/types';
 
+/** 대운·세운만 있으면 그린다. */
+export type LuckChart = Pick<SajuChart, 'daeun' | 'seun'>;
+
 const ELEMENT_VAR: Record<Element, string> = {
   목: 'var(--wood)',
   화: 'var(--fire)',
@@ -12,7 +15,7 @@ const ELEMENT_VAR: Record<Element, string> = {
   수: 'var(--water)',
 };
 
-export function LuckCycles({ chart }: { chart: SajuChart }) {
+export function LuckCycles({ chart }: { chart: LuckChart }) {
   const { daeun, seun } = chart;
   const thisYear = new Date().getFullYear();
 
