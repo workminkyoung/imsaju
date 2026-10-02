@@ -69,11 +69,17 @@ describe.each(PROMPT_KINDS)('%s 기본 템플릿', (kind) => {
     expect(leftovers, `치환 안 된 변수: ${leftovers.join(', ')}`).toEqual([]);
   });
 
-  it('말투 규칙이 템플릿 안에 살아 있다', () => {
-    // 톤을 코드가 아니라 템플릿에 두기로 했으므로, 여기서 사라지면 말투가 통째로 날아간다.
-    expect(template).toContain('프로님');
-    expect(template).toContain('…해요');
-    expect(template).toMatch(/당신.*쓰지/);
+  it('원국만 근거로 삼으라는 지시가 살아 있다', () => {
+    // 말투와 목차는 운영자가 자유롭게 바꾼다. 테스트가 특정 문체를 강제하면 안 된다.
+    // 다만 "주어진 원국만 쓰고 지어내지 마라"는 품질의 토대라 사라지면 안 된다.
+    expect(template).toMatch(/지어내|있는 글자|근거/);
+  });
+
+  it('그 종류에 맞는 안전 규칙이 살아 있다', () => {
+    // 개인 풀이는 단정적 예언을, 궁합은 인격 평가와 관계 단절 조언을 막아야 한다.
+    const required =
+      kind === 'compatibility' ? /깎아내리지|피하라|끊으라/ : /단정적|예언/;
+    expect(template).toMatch(required);
   });
 });
 
@@ -98,13 +104,9 @@ describe('개인 사주풀이 렌더 결과', () => {
     expect(rendered).toMatch(/신강|신약|중화/);
   });
 
-  it('새 목차 일곱 항목을 모두 지시한다', () => {
-    for (const heading of [
-      '한마디로 말하면', '타고난 성격', '일할 때의 나',
-      '돈이 들어오고 나가는 결', '사람과 관계', '지금 지나는 시기', '무엇을 채우면 좋을까',
-    ]) {
-      expect(rendered, `누락된 항목: ${heading}`).toContain(heading);
-    }
+  it('시주가 없는 경우를 다루라고 지시한다', () => {
+    // 목차는 운영자가 정한다. 다만 시각 미상 처리는 빠지면 모델이 시주를 지어낸다.
+    expect(rendered).toContain('시주');
   });
 });
 

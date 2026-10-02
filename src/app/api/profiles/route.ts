@@ -6,6 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { getProfileStore, profileStorageInfo, toPublic, type StoredProfile } from '@/lib/profileStore';
+import { SEED_CARDS, seedingEnabled } from '@/lib/profileSeed';
 import { ValidationError, parseSajuInput } from '@/lib/validate';
 
 export const runtime = 'nodejs';
@@ -20,7 +21,34 @@ function readLabel(body: Record<string, unknown>, fallback: string): string {
   return (raw || fallback).slice(0, 40);
 }
 
+/**
+ * 저장소가 비어 있으면 초기 카드를 한 번 심는다.
+ * 사용자가 전부 지웠다면 다시 심지 않도록, 비었을 때만 심고 표시를 남긴다.
+ */
+async function seedIfEmpty(): Promise<void> {
+  if (!seedingEnabled()) return;
+  const store = getProfileStore();
+  if ((await store.list()).length > 0) return;
+  // 이미 한 번 심었는지 표시해 둔다. 사용자가 다 지운 뒤 되살아나면 곤란하다.
+  if (!(await store.allowAttempt('seeded', 1, 365 * 24 * 60 * 60))) return;
+
+  const now = Date.now();
+  await Promise.all(
+    SEED_CARDS.map((card, i) =>
+      store.put({
+        id: crypto.randomUUID(),
+        label: card.label,
+        memo: card.memo,
+        input: { ...card.input, name: card.label },
+        createdAt: now + i,
+        updatedAt: now + i,
+      }),
+    ),
+  );
+}
+
 export async function GET() {
+  await seedIfEmpty();
   const profiles = await getProfileStore().list();
   return NextResponse.json({
     profiles: profiles.map(toPublic),
