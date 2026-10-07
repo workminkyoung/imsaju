@@ -2,10 +2,7 @@
 
 import { useRef } from 'react';
 import type { PublicProfile } from '@/lib/profiles';
-
-/** 카드 한 장의 크기. 슬롯·드래그 고스트도 같은 값을 쓴다. */
-export const CARD_W = 104;
-export const CARD_H = 156;
+import { useFanConfig } from './fanConfig';
 
 type Props =
   | { kind: 'add'; onAdd: () => void }
@@ -25,6 +22,9 @@ type Props =
 const DRAG_THRESHOLD = 6;
 
 export function TableCard(props: Props) {
+  // 카드 크기와 뒤집힘 높이는 설정에서 온다. 튜너로 돌리면 여기부터 바뀐다.
+  const { cardW, cardH, flipLift } = useFanConfig();
+
   if (props.kind === 'add') {
     return (
       <button
@@ -32,8 +32,8 @@ export function TableCard(props: Props) {
         onClick={props.onAdd}
         className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed transition hover:-translate-y-2"
         style={{
-          width: CARD_W,
-          height: CARD_H,
+          width: cardW,
+          height: cardH,
           borderColor: 'var(--border)',
           background: 'var(--surface-sunken)',
           color: 'var(--text-muted)',
@@ -75,11 +75,11 @@ export function TableCard(props: Props) {
     <div
       className="relative select-none transition-[transform,opacity] duration-300"
       style={{
-        width: CARD_W,
-        height: CARD_H,
+        width: cardW,
+        height: cardH,
         perspective: 800,
         opacity: dimmed ? 0.35 : 1,
-        transform: flipped ? 'translateY(-26px)' : undefined,
+        transform: flipped ? `translateY(-${flipLift}px)` : undefined,
         cursor: 'grab',
         touchAction: 'none',
       }}

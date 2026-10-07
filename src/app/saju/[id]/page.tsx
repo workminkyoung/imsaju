@@ -21,7 +21,7 @@ export default async function SajuPage({ params }: { params: Promise<{ id: strin
   const chart = computeSaju(profile.input);
 
   return (
-    <main className="space-y-4">
+    <main className="page-shell space-y-4 pb-12">
       <Link
         href="/"
         className="inline-block text-xs text-[var(--text-muted)] transition hover:text-[var(--accent)]"

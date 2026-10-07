@@ -1,7 +1,7 @@
 'use client';
 
 import type { PublicProfile } from '@/lib/profiles';
-import { CARD_H, CARD_W } from './TableCard';
+import { useFanConfig } from './fanConfig';
 
 interface Props {
   /** [A, B] — 비어 있으면 null */
@@ -16,6 +16,9 @@ interface Props {
 const LABELS = ['A', 'B'];
 
 export function DropSlots({ slots, hovered, onClear, slotRefs }: Props) {
+  // 빈 칸도 카드 모양이어야 하니 카드와 같은 크기를 쓴다.
+  const { cardW, cardH } = useFanConfig();
+
   return (
     <div className="flex items-start justify-center gap-5">
       {slots.map((profile, index) => {
@@ -35,8 +38,8 @@ export function DropSlots({ slots, hovered, onClear, slotRefs }: Props) {
               }}
               className="flex items-center justify-center rounded-xl border-2 border-dashed transition"
               style={{
-                width: CARD_W,
-                height: CARD_H,
+                width: cardW,
+                height: cardH,
                 borderColor: active || profile ? 'var(--accent)' : 'var(--border)',
                 background: active ? 'var(--accent-soft)' : 'var(--surface-sunken)',
                 transform: active ? 'scale(1.04)' : undefined,

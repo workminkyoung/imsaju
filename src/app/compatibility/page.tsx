@@ -70,7 +70,7 @@ function CompatibilityInner() {
 
   if (!aId || !bId) {
     return (
-      <main className="space-y-4">
+      <main className="page-shell space-y-4 pb-12">
         <BackLink />
         <div className="card text-sm">
           볼 카드가 정해지지 않았습니다. 카드 테이블에서 두 장을 위 칸에 올려 주세요.
@@ -80,7 +80,7 @@ function CompatibilityInner() {
   }
 
   return (
-    <main className="space-y-4">
+    <main className="page-shell space-y-4 pb-12">
       <BackLink />
 
       <RelationshipPicker
@@ -156,7 +156,7 @@ function BackLink() {
 export default function CompatibilityPage() {
   // useSearchParams 는 Suspense 안에 있어야 한다.
   return (
-    <Suspense fallback={<main className="py-10 text-center text-sm text-[var(--text-muted)]">불러오는 중…</main>}>
+    <Suspense fallback={<main className="page-shell py-10 text-center text-sm text-[var(--text-muted)]">불러오는 중…</main>}>
       <CompatibilityInner />
     </Suspense>
   );
