@@ -45,6 +45,8 @@ export function CardFan({
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(800);
+  /** 마우스를 올린 카드. 겹쳐 가린 앞면을 보이도록 들어 올려 맨 위로 낸다. */
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   useLayoutEffect(() => {
     const measure = () => setWidth(wrapRef.current?.clientWidth ?? 800);
@@ -68,7 +70,7 @@ export function CardFan({
    * 그래서 최소로 드러날 폭을 먼저 정하고 거기서 반지름을 역산한다.
    * 넘치는 가로 폭은 스크롤로 받는다.
    */
-  const MIN_REVEAL = 54;
+  const MIN_REVEAL = 72;
   const radius = Math.min(
     760,
     Math.max(MIN_REVEAL / Math.sin((step * Math.PI) / 180), width * 0.62, 320),
@@ -89,7 +91,12 @@ export function CardFan({
    * 양끝 카드가 잘린다. 장수가 늘수록 각도가 커지므로 고정값으로 두면 반드시 깨진다.
    */
   const maxAngle = (Math.abs(start) * Math.PI) / 180;
-  const drop = radius * (1 - Math.cos(maxAngle));
+  /*
+   * 기울어진 카드는 바깥쪽 아래 모서리가 가운데보다 더 내려온다(반폭 × sin).
+   * 카드가 넓어지면서 이 몫이 커져 양끝 모서리가 잘렸다.
+   */
+  const corner = (CARD_W / 2) * Math.sin(maxAngle);
+  const drop = radius * (1 - Math.cos(maxAngle)) + corner;
   const height = Math.round(CARD_H + drop);
 
   /** 부채꼴이 실제로 차지하는 가로 폭. 이보다 좁으면 양끝이 잘린다. */
@@ -106,6 +113,8 @@ export function CardFan({
           const angle = start + step * i;
           const key = slot.kind === 'add' ? '__add__' : slot.profile.id;
           const placed = slot.kind === 'card' && placedIds.includes(slot.profile.id);
+          const flipped = slot.kind === 'card' && flippedId === slot.profile.id;
+          const hovered = slot.kind === 'card' && hoveredId === slot.profile.id;
 
           return (
             <div
@@ -115,9 +124,13 @@ export function CardFan({
                 // 카드 아래 radius 만큼 떨어진 지점을 축으로 돌린다 → 부채꼴
                 bottom: drop,
                 transformOrigin: `center ${radius}px`,
-                transform: `translateX(-50%) rotate(${angle}deg)`,
-                zIndex: slot.kind === 'card' && flippedId === slot.profile.id ? 50 : i,
+                transform: `translateX(-50%) rotate(${angle}deg)${hovered && !flipped ? ' translateY(-14px)' : ''}`,
+                zIndex: flipped ? 50 : hovered ? 40 : i,
               }}
+              onPointerEnter={(e) => {
+                if (slot.kind === 'card' && e.pointerType === 'mouse') setHoveredId(slot.profile.id);
+              }}
+              onPointerLeave={() => setHoveredId(null)}
             >
               {slot.kind === 'add' ? (
                 <TableCard kind="add" onAdd={onAdd} />

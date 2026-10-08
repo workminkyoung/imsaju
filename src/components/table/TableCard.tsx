@@ -2,10 +2,25 @@
 
 import { useRef } from 'react';
 import type { PublicProfile } from '@/lib/profiles';
+import { ELEMENTS, type Element } from '@/lib/saju/constants';
 
-/** 카드 한 장의 크기. 슬롯·드래그 고스트도 같은 값을 쓴다. */
-export const CARD_W = 104;
-export const CARD_H = 156;
+/**
+ * 카드 한 장의 크기. 슬롯·드래그 고스트도 같은 값을 쓴다.
+ * 앞면 배경(cardBase.png, 1065×1476)과 비율을 맞춘다.
+ */
+export const CARD_W = 160;
+export const CARD_H = 222;
+
+/**
+ * 앞면 위 오행 색. 배경이 짙은 초록이라 UI 공통색(ELEMENT_COLOR)은 묻힌다.
+ * 배경 이미지의 오행 아이콘 색에 맞춘 밝은 톤을 쓴다.
+ */
+const FACE_ELEMENT_COLOR: Record<Element, string> = {
+  목: '#5fd18a', 화: '#ff6b6b', 토: '#e8b85a', 금: '#cfd4dc', 수: '#5aa2ff',
+};
+
+/** 배경 이미지의 오행 다섯 칸 가운데 x (%) */
+const ELEMENT_COLUMN_X = [21, 36.2, 50.7, 64.8, 79.2];
 
 type Props =
   | { kind: 'add'; onAdd: () => void }
@@ -105,29 +120,12 @@ export function TableCard(props: Props) {
           transform: flipped ? 'rotateY(180deg)' : undefined,
         }}
       >
-        {/* 앞면 — 이름만 */}
+        {/* 앞면 — 배경 이미지 위에 만세력 요약 */}
         <div
-          className="table-card-face absolute inset-0 overflow-hidden rounded-xl border-2"
-          style={{
-            backfaceVisibility: 'hidden',
-            borderColor: 'var(--border)',
-            background: 'var(--card-face)',
-          }}
+          className="table-card-face absolute inset-0 overflow-hidden rounded-xl"
+          style={{ backfaceVisibility: 'hidden' }}
         >
-          {/*
-            이름을 가운데 두면 부채꼴에서 옆 카드에 가려 안 보인다.
-            트럼프 카드처럼 왼쪽 위 모서리에 둬서 겹쳐도 읽히게 한다.
-          */}
-          <span
-            className="absolute left-2 top-2 text-[13px] font-bold leading-tight"
-            style={{ maxWidth: 44, wordBreak: 'keep-all' }}
-          >
-            {profile.label}
-          </span>
-          {/* 가려지지 않는 마지막 카드에서는 가운데 이름도 함께 보인다 */}
-          <span className="absolute inset-x-2 bottom-3 truncate text-center text-xs text-[var(--text-muted)]">
-            {profile.label}
-          </span>
+          <CardFront profile={profile} />
         </div>
 
         {/* 뒷면 — 개인정보 없이 행동만 */}
@@ -160,6 +158,102 @@ export function TableCard(props: Props) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * 앞면. 배경 이미지(cardSample.png 참고)의 빈칸에 맞춰 이미지 대비 % 좌표로 배치하고,
+ * 글자는 카드 폭 기준(cqw)으로 잡아 카드 크기가 바뀌어도 자리가 유지되게 한다.
+ * 가운데 괄호 틀(캐릭터 자리)은 아직 비워 둔다.
+ */
+function CardFront({ profile }: { profile: PublicProfile }) {
+  const { face } = profile;
+  const max = face ? Math.max(...ELEMENTS.map((e) => face.elements[e]), 1) : 1;
+
+  return (
+    <div
+      className="relative size-full select-none"
+      style={{
+        containerType: 'inline-size',
+        background: 'var(--card-face) url(/cards/cardBase.png) center / 100% 100% no-repeat',
+        imageRendering: 'pixelated',
+        color: 'var(--card-ink)',
+      }}
+    >
+      {/* 이름 — 위쪽 ✦ 사이 */}
+      <span
+        className="absolute truncate text-center font-bold leading-none"
+        style={{ left: '33%', right: '33%', top: '11.6%', fontSize: '8cqw' }}
+      >
+        {profile.label}
+      </span>
+
+      {face && (
+        <>
+          {/* 띠·일주 — ─✦ 사이 */}
+          <span
+            className="absolute truncate text-center leading-none"
+            style={{ left: '23%', right: '23%', top: '36.8%', fontSize: '3.8cqw', letterSpacing: '-0.02em' }}
+          >
+            {face.identity}
+          </span>
+
+          {/* 오행 막대 — 가장 강한 오행을 꽉 찬 막대로 */}
+          {ELEMENTS.map((e, i) => (
+            <span
+              key={e}
+              className="absolute overflow-hidden rounded-full"
+              style={{
+                left: `${ELEMENT_COLUMN_X[i] - 5.5}%`,
+                width: '11%',
+                top: '58.4%',
+                height: '1.3%',
+                background: 'rgb(0 0 0 / 0.4)',
+              }}
+              title={`${e} ${face.elements[e]}%`}
+            >
+              <span
+                className="block h-full rounded-full"
+                style={{
+                  width: `${(face.elements[e] / max) * 100}%`,
+                  background: FACE_ELEMENT_COLOR[e],
+                }}
+              />
+            </span>
+          ))}
+
+          {/* 주요 키워드 */}
+          <div
+            className="absolute flex flex-wrap items-center justify-center"
+            style={{ left: '14%', right: '14%', top: '72.6%', bottom: '20.4%', gap: '2cqw' }}
+          >
+            {face.keywords.map((k) => (
+              <span
+                key={k.text}
+                className="whitespace-nowrap leading-none"
+                style={{
+                  fontSize: '3.8cqw',
+                  padding: '1.4cqw 2cqw',
+                  border: `0.5cqw solid ${FACE_ELEMENT_COLOR[k.element]}`,
+                  borderRadius: '1.5cqw',
+                  color: FACE_ELEMENT_COLOR[k.element],
+                }}
+              >
+                {k.text}
+              </span>
+            ))}
+          </div>
+
+          {/* 한 줄 소개 */}
+          <span
+            className="absolute truncate text-center leading-none"
+            style={{ left: '16%', right: '16%', top: '86.4%', fontSize: '4cqw' }}
+          >
+            ✦ {face.tagline} ✦
+          </span>
+        </>
+      )}
     </div>
   );
 }

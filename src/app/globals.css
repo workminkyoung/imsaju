@@ -173,3 +173,8 @@ body {
 :root[data-theme='dark'] {
   --card-face: #35302a;
 }
+
+/* 카드 앞면 글자색 — 배경 이미지가 모드와 상관없이 짙은 초록이라 한 가지 색만 쓴다 */
+:root {
+  --card-ink: #f3ecd0;
+}

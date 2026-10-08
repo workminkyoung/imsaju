@@ -12,6 +12,8 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Redis } from '@upstash/redis';
+import { computeSaju } from './saju';
+import { buildCardFace, type CardFace } from './saju/cardFace';
 import type { SajuInput } from './saju/types';
 
 /** 마지막으로 쓰인 뒤 이만큼 지나면 사라진다. */
@@ -28,12 +30,25 @@ export interface StoredProfile {
   updatedAt: number;
 }
 
-/** 브라우저로 내보내도 되는 부분. 생년월일은 들어 있지 않다. */
+/**
+ * 브라우저로 내보내도 되는 부분. 생년월일은 들어 있지 않다.
+ * 앞면 요약(face)에는 띠·연주·일주·오행 비율만 있고 날짜·시각은 없다.
+ */
 export interface PublicProfile {
   id: string;
   label: string;
   memo?: string;
   createdAt: number;
+  face?: CardFace;
+}
+
+/** 계산이 실패해도 목록은 내보낸다. 그 카드는 이름만 보인다. */
+function faceOf(profile: StoredProfile): CardFace | undefined {
+  try {
+    return buildCardFace(computeSaju(profile.input), profile.memo);
+  } catch {
+    return undefined;
+  }
 }
 
 export function toPublic(profile: StoredProfile): PublicProfile {
@@ -42,6 +57,7 @@ export function toPublic(profile: StoredProfile): PublicProfile {
     label: profile.label,
     memo: profile.memo,
     createdAt: profile.createdAt,
+    face: faceOf(profile),
   };
 }
 

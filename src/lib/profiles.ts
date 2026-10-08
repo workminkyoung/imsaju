@@ -7,17 +7,19 @@
  * 예전에 localStorage 에 쌓인 카드는 처음 한 번 서버로 올리고 지운다.
  */
 
+import type { CardFace } from './saju/cardFace';
 import type { SajuInput } from './saju/types';
 
 const LEGACY_KEY = 'imsaju.profiles.v1';
 const MIGRATED_KEY = 'imsaju.profiles.migrated';
 
-/** 목록에 보이는 카드. 생년월일이 없다. */
+/** 목록에 보이는 카드. 생년월일이 없다. face 는 띠·일주·오행 요약뿐이다. */
 export interface PublicProfile {
   id: string;
   label: string;
   memo?: string;
   createdAt: number;
+  face?: CardFace;
 }
 
 /** 본인 확인을 통과했을 때만 받는 전체 카드 */
