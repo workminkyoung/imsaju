@@ -181,11 +181,13 @@ export function CardFront({ profile }: { profile: PublicProfile }) {
       {/* 이름 — 위쪽 ✦ 사이 */}
       <span
         className="absolute truncate text-center font-bold leading-none"
-        style={{ left: '31%', right: '31%', top: '11.6%', fontSize: '8cqw' }}
+        style={{ left: '31%', right: '31%', top: '12%', fontSize: '7cqw' }}
       >
-        {profile.label}
-        {/* 호칭은 화면에만 붙인다. 저장된 이름은 그대로다. */}
-        <span style={{ fontSize: '5.5cqw', opacity: 0.85 }}> 프로</span>
+        {/*
+          호칭은 화면에만 붙인다. 저장된 이름은 그대로다.
+          ✦ 사이 칸이 좁아 "김민경 프로"까지 한 줄에 들어가도록 글자를 조금 줄였다.
+        */}
+        {profile.label} 프로
       </span>
 
       {face && (
