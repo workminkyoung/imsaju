@@ -16,25 +16,24 @@ import {
   type FanConfig,
   type FanMetrics,
 } from './fanConfig';
-import { BirthDateGate } from '@/components/BirthDateGate';
 import { ProfileEditor } from '@/components/ProfileEditor';
 import {
+  PROFILE_TTL_DAYS,
   createProfile,
   deleteProfile,
-  fetchProfiles,
-  migrateLegacyProfiles,
+  getProfile,
+  listProfiles,
+  toPublic,
   updateProfile,
-  type FullProfile,
   type PublicProfile,
-  type StorageInfo,
+  type StoredProfile,
 } from '@/lib/profiles';
 import type { SajuInput } from '@/lib/saju/types';
 
 type EditState =
   | { mode: 'none' }
   | { mode: 'new' }
-  | { mode: 'gate'; profile: PublicProfile }
-  | { mode: 'edit'; profile: FullProfile; birthDate: string };
+  | { mode: 'edit'; profile: StoredProfile };
 
 interface Drag {
   profile: PublicProfile;
@@ -46,10 +45,8 @@ export function CardTable() {
   const router = useRouter();
 
   const [profiles, setProfiles] = useState<PublicProfile[]>([]);
-  const [storage, setStorage] = useState<StorageInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
 
   const [flippedId, setFlippedId] = useState<string | null>(null);
   const [slots, setSlots] = useState<(PublicProfile | null)[]>([null, null]);
@@ -82,25 +79,14 @@ export function CardTable() {
 
   const slotRefs = useRef<(HTMLDivElement | null)[]>([null, null]);
 
-  const reload = useCallback(async () => {
-    try {
-      const data = await fetchProfiles();
-      setProfiles(data.profiles);
-      setStorage(data.storage);
-      setError('');
-    } catch (err) {
-      setError((err as Error)?.message ?? '카드를 불러오지 못했습니다.');
-    } finally {
-      setLoading(false);
-    }
+  // 카드는 브라우저에만 있으므로 서버가 그린 첫 화면에는 없다. 올라온 뒤에 읽는다.
+  const reload = useCallback(() => {
+    setProfiles(listProfiles().map(toPublic));
+    setLoading(false);
   }, []);
 
   useEffect(() => {
-    void (async () => {
-      const moved = await migrateLegacyProfiles();
-      if (moved > 0) setNotice(`이 브라우저에 있던 카드 ${moved}장을 서버로 옮겼습니다.`);
-      await reload();
-    })();
+    reload();
   }, [reload]);
 
   // ── 드래그 ──
@@ -161,22 +147,35 @@ export function CardTable() {
 
   // ── 카드 관리 ──
   async function saveNew(input: SajuInput, memo?: string) {
-    await createProfile(input, memo);
+    createProfile(input, memo);
     setEdit({ mode: 'none' });
-    await reload();
+    reload();
   }
 
   async function saveEdit(state: Extract<EditState, { mode: 'edit' }>, input: SajuInput, memo?: string) {
-    await updateProfile(state.profile.id, state.birthDate, input, memo);
+    const updated = toPublic(updateProfile(state.profile.id, input, memo));
+    // 궁합 칸에 올라가 있던 카드도 고친 내용으로 바꾼다.
+    setSlots((prev) => prev.map((p) => (p?.id === updated.id ? updated : p)));
     setEdit({ mode: 'none' });
-    await reload();
+    reload();
   }
 
   async function removeCard(state: Extract<EditState, { mode: 'edit' }>) {
-    await deleteProfile(state.profile.id, state.birthDate);
+    deleteProfile(state.profile.id);
     setSlots((prev) => prev.map((p) => (p?.id === state.profile.id ? null : p)));
     setEdit({ mode: 'none' });
-    await reload();
+    reload();
+  }
+
+  function openEditor(id: string) {
+    const profile = getProfile(id);
+    if (!profile) {
+      setError('카드를 찾을 수 없습니다. 오래 쓰지 않아 지워졌을 수 있습니다.');
+      reload();
+      return;
+    }
+    setError('');
+    setEdit({ mode: 'edit', profile });
   }
 
   if (edit.mode === 'new' || edit.mode === 'edit') {
@@ -203,18 +202,6 @@ export function CardTable() {
       <div className="relative flex flex-1 flex-col">
         {/* 위쪽 — 궁합 슬롯과 안내. 여기까지는 가운데 폭을 지킨다. */}
         <div className="page-shell">
-          {notice && (
-            <p
-              className="mb-4 rounded-lg p-2.5 text-xs leading-relaxed"
-              style={{
-                background: 'var(--accent-soft)',
-                color: 'var(--accent)',
-              }}
-            >
-              {notice}
-            </p>
-          )}
-
           <section className="pt-2">
             <DropSlots
               slots={slots}
@@ -251,14 +238,12 @@ export function CardTable() {
             </div>
           )}
 
-          {storage && !storage.durable && (
-            <p className="mt-4 text-center text-[11px] leading-relaxed text-[var(--text-muted)]">
-              이 서버는 카드를 오래 보관하지 못합니다({storage.name}). 재시작하면 사라집니다.
-            </p>
-          )}
-
           <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
             카드를 누르면 뒤집히고, 끌어다 놓으면 궁합 칸에 들어갑니다.
+          </p>
+          <p className="mt-1 text-center text-[11px] text-[var(--text-muted)]">
+            카드는 이 브라우저에만 저장됩니다
+            {PROFILE_TTL_DAYS !== null && ` · ${PROFILE_TTL_DAYS}일 동안 쓰지 않으면 지워져요`}
           </p>
         </div>
 
@@ -292,20 +277,12 @@ export function CardTable() {
               onFlip={(id) => setFlippedId((prev) => (prev === id ? null : id))}
               onAdd={() => setEdit({ mode: 'new' })}
               onViewSaju={(id) => router.push(`/saju/${id}`)}
-              onEdit={(profile) => setEdit({ mode: 'gate', profile })}
+              onEdit={(profile) => openEditor(profile.id)}
               onDragStart={startDrag}
               onMetrics={setMetrics}
             />
           )}
         </section>
-
-        {edit.mode === 'gate' && (
-          <BirthDateGate
-            profile={edit.profile}
-            onVerified={(full, birthDate) => setEdit({ mode: 'edit', profile: full, birthDate })}
-            onCancel={() => setEdit({ mode: 'none' })}
-          />
-        )}
 
         {/*
           드래그 중 따라다니는 카드. 부채꼴과 같은 배율로 줄여야 손에 쥐는 순간

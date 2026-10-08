@@ -1,19 +1,37 @@
 /**
- * 사람 카드 — 브라우저 쪽 접근 코드.
+ * 사람 카드 — 이 브라우저의 localStorage 에만 둔다.
  *
- * 카드는 이제 서버에 있다. 브라우저가 받는 것은 **이름과 메모뿐**이고
- * 생년월일은 수정할 때 본인 확인을 통과해야만 내려온다.
+ * 카드에는 **타인의 생년월일**이 들어간다. 서버에 모아 두면 보관·관리 책임이 생기므로
+ * 각자의 브라우저에만 저장한다. 서버는 계산·풀이를 할 때 입력을 받아 쓰고 버린다.
  *
- * 예전에 localStorage 에 쌓인 카드는 처음 한 번 서버로 올리고 지운다.
+ * 그래서 카드는 기기·브라우저마다 따로이고, 다른 사람과 공유되지 않는다.
+ * 오래 쓰지 않은 카드는 읽을 때 지운다(PROFILE_TTL_DAYS).
  */
 
-import type { CardFace } from './saju/cardFace';
+import { computeSaju } from './saju';
+import { buildCardFace, type CardFace } from './saju/cardFace';
 import type { SajuInput } from './saju/types';
 
-const LEGACY_KEY = 'imsaju.profiles.v1';
-const MIGRATED_KEY = 'imsaju.profiles.migrated';
+const STORAGE_KEY = 'imsaju.cards.v1';
 
-/** 목록에 보이는 카드. 생년월일이 없다. face 는 띠·일주·오행 요약뿐이다. */
+/**
+ * 마지막으로 쓴 뒤 이만큼 지나면 지운다. 사주를 보거나 궁합에 올리거나 고치면 "쓴" 것이다.
+ * null 로 두면 지우지 않는다.
+ */
+export const PROFILE_TTL_DAYS: number | null = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** 브라우저에 저장되는 카드 전체 */
+export interface StoredProfile {
+  id: string;
+  label: string;
+  memo?: string;
+  input: SajuInput;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** 카드 테이블이 그리는 카드. face 는 띠·일주·오행 요약이다. */
 export interface PublicProfile {
   id: string;
   label: string;
@@ -22,132 +40,130 @@ export interface PublicProfile {
   face?: CardFace;
 }
 
-/** 본인 확인을 통과했을 때만 받는 전체 카드 */
-export interface FullProfile {
-  id: string;
-  label: string;
-  memo?: string;
-  input: SajuInput;
-}
-
-export interface StorageInfo {
-  name: string;
-  durable: boolean;
-  ttlDays: number;
-}
-
-async function readError(response: Response, fallback: string): Promise<string> {
-  const data = (await response.json().catch(() => ({}))) as { error?: string };
-  return data.error ?? fallback;
-}
-
-export async function fetchProfiles(): Promise<{ profiles: PublicProfile[]; storage: StorageInfo }> {
-  const response = await fetch('/api/profiles', { cache: 'no-store' });
-  if (!response.ok) throw new Error(await readError(response, '카드를 불러오지 못했습니다.'));
-  return (await response.json()) as { profiles: PublicProfile[]; storage: StorageInfo };
-}
-
-export async function createProfile(
-  input: SajuInput,
-  memo?: string,
-): Promise<PublicProfile> {
-  const response = await fetch('/api/profiles', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ input, label: input.name, memo }),
-  });
-  if (!response.ok) throw new Error(await readError(response, '카드를 저장하지 못했습니다.'));
-  const data = (await response.json()) as { profile: PublicProfile };
-  return data.profile;
-}
-
-/** 생년월일(YYMMDD)로 본인 확인. 통과하면 수정 화면을 채울 전체 카드를 준다. */
-export async function verifyProfile(id: string, birthDate: string): Promise<FullProfile> {
-  const response = await fetch('/api/profiles/verify', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ id, birthDate }),
-  });
-  if (!response.ok) throw new Error(await readError(response, '확인에 실패했습니다.'));
-  const data = (await response.json()) as { profile: FullProfile };
-  return data.profile;
-}
-
-export async function updateProfile(
-  id: string,
-  birthDate: string,
-  input: SajuInput,
-  memo?: string,
-): Promise<PublicProfile> {
-  const response = await fetch(`/api/profiles/${id}`, {
-    method: 'PUT',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ birthDate, input, label: input.name, memo }),
-  });
-  if (!response.ok) throw new Error(await readError(response, '카드를 수정하지 못했습니다.'));
-  const data = (await response.json()) as { profile: PublicProfile };
-  return data.profile;
-}
-
-export async function deleteProfile(id: string, birthDate: string): Promise<void> {
-  const response = await fetch(`/api/profiles/${id}`, {
-    method: 'DELETE',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ birthDate }),
-  });
-  if (!response.ok) throw new Error(await readError(response, '카드를 삭제하지 못했습니다.'));
-}
-
-// ── 예전 localStorage 카드 이전 ───────────────────────────────────────────
-
-interface LegacyProfile {
-  label?: string;
-  memo?: string;
-  input?: SajuInput;
-}
-
-/**
- * 브라우저에 남아 있던 카드를 서버로 올린다. 한 번만 한다.
- *
- * 올린 뒤 로컬을 비우는 이유는, 남겨 두면 같은 카드가 기기마다 다시 올라가
- * 중복이 쌓이기 때문이다.
- *
- * @returns 올린 카드 수
- */
-export async function migrateLegacyProfiles(): Promise<number> {
-  if (typeof window === 'undefined') return 0;
-
-  let legacy: LegacyProfile[];
+/** localStorage 는 사생활 보호 모드 등에서 접근만 해도 던질 수 있다. */
+function storage(): Storage | null {
   try {
-    if (window.localStorage.getItem(MIGRATED_KEY)) return 0;
-    const raw = window.localStorage.getItem(LEGACY_KEY);
-    if (!raw) {
-      window.localStorage.setItem(MIGRATED_KEY, '1');
-      return 0;
-    }
-    const parsed: unknown = JSON.parse(raw);
-    legacy = Array.isArray(parsed) ? (parsed as LegacyProfile[]) : [];
+    return globalThis.localStorage ?? null;
   } catch {
-    // 저장소를 못 읽으면 이전할 것도 없다.
-    return 0;
+    return null;
   }
+}
 
-  let moved = 0;
-  for (const item of legacy) {
-    if (!item?.input || typeof item.input.year !== 'number') continue;
-    try {
-      await createProfile({ ...item.input, name: item.label ?? item.input.name }, item.memo);
-      moved += 1;
-    } catch {
-      // 한 장이 실패해도 나머지는 올린다.
-    }
-  }
+function isExpired(profile: StoredProfile, now: number): boolean {
+  return PROFILE_TTL_DAYS !== null && now - profile.updatedAt > PROFILE_TTL_DAYS * DAY_MS;
+}
 
+function readAll(): StoredProfile[] {
+  const store = storage();
+  if (!store) return [];
+  let parsed: unknown;
   try {
-    window.localStorage.removeItem(LEGACY_KEY);
-    window.localStorage.setItem(MIGRATED_KEY, '1');
+    parsed = JSON.parse(store.getItem(STORAGE_KEY) ?? '[]');
   } catch {
-    // 지우지 못해도 표시는 남기려 했으니 그걸로 둔다.
+    return [];
   }
-  return moved;
+  if (!Array.isArray(parsed)) return [];
+
+  const all = (parsed as StoredProfile[]).filter(
+    (p) => typeof p?.id === 'string' && typeof p.input?.year === 'number',
+  );
+  const now = Date.now();
+  const alive = all.filter((p) => !isExpired(p, now));
+  // 만료된 카드는 읽은 김에 실제로 지운다. 남겨 두면 기간이 지나도 기기에 남는다.
+  if (alive.length !== all.length) writeAll(alive);
+  return alive;
+}
+
+function writeAll(profiles: StoredProfile[]): void {
+  const store = storage();
+  if (!store) throw new Error('이 브라우저에서는 카드를 저장할 수 없습니다.');
+  try {
+    store.setItem(STORAGE_KEY, JSON.stringify(profiles));
+  } catch {
+    throw new Error('브라우저 저장 공간에 카드를 저장하지 못했습니다.');
+  }
+}
+
+/** 계산이 실패해도 목록은 보인다. 그 카드는 이름만 나온다. */
+function faceOf(profile: StoredProfile): CardFace | undefined {
+  try {
+    return buildCardFace(computeSaju(profile.input), profile.memo);
+  } catch {
+    return undefined;
+  }
+}
+
+export function toPublic(profile: StoredProfile): PublicProfile {
+  return {
+    id: profile.id,
+    label: profile.label,
+    memo: profile.memo,
+    createdAt: profile.createdAt,
+    face: faceOf(profile),
+  };
+}
+
+function cleanLabel(input: SajuInput): string {
+  return (input.name.trim() || '이름 없음').slice(0, 40);
+}
+
+function cleanMemo(memo: string | undefined): string | undefined {
+  return memo?.trim().slice(0, 40) || undefined;
+}
+
+export function listProfiles(): StoredProfile[] {
+  return readAll().sort((a, b) => a.createdAt - b.createdAt);
+}
+
+export function getProfile(id: string): StoredProfile | null {
+  return readAll().find((p) => p.id === id) ?? null;
+}
+
+/** 카드를 "썼다"고 표시해 보관 기간을 다시 센다. */
+export function touchProfile(id: string): void {
+  const all = readAll();
+  const profile = all.find((p) => p.id === id);
+  if (!profile) return;
+  profile.updatedAt = Date.now();
+  try {
+    writeAll(all);
+  } catch {
+    // 기간 연장에 실패해도 보던 화면은 그대로 둔다.
+  }
+}
+
+export function createProfile(input: SajuInput, memo?: string): StoredProfile {
+  const now = Date.now();
+  const label = cleanLabel(input);
+  const profile: StoredProfile = {
+    id: crypto.randomUUID(),
+    label,
+    memo: cleanMemo(memo),
+    input: { ...input, name: label },
+    createdAt: now,
+    updatedAt: now,
+  };
+  writeAll([...readAll(), profile]);
+  return profile;
+}
+
+export function updateProfile(id: string, input: SajuInput, memo?: string): StoredProfile {
+  const all = readAll();
+  const index = all.findIndex((p) => p.id === id);
+  if (index < 0) throw new Error('카드를 찾을 수 없습니다. 이미 지워졌을 수 있습니다.');
+  const label = cleanLabel(input);
+  const updated: StoredProfile = {
+    ...all[index]!,
+    label,
+    memo: cleanMemo(memo),
+    input: { ...input, name: label },
+    updatedAt: Date.now(),
+  };
+  all[index] = updated;
+  writeAll(all);
+  return updated;
+}
+
+export function deleteProfile(id: string): void {
+  writeAll(readAll().filter((p) => p.id !== id));
 }

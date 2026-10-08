@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { BirthForm } from './BirthForm';
-import type { FullProfile } from '@/lib/profiles';
+import { PROFILE_TTL_DAYS, type StoredProfile } from '@/lib/profiles';
 import type { SajuInput } from '@/lib/saju/types';
 
 interface Props {
-  /** 수정이면 본인 확인을 통과한 전체 카드, 추가면 undefined */
-  editing?: FullProfile;
+  /** 수정이면 고칠 카드, 추가면 undefined */
+  editing?: StoredProfile;
   onSave: (input: SajuInput, memo: string | undefined) => Promise<void>;
   onDelete?: () => Promise<void>;
   onCancel: () => void;
@@ -65,8 +65,8 @@ export function ProfileEditor({ editing, onSave, onDelete, onCancel }: Props) {
           )}
         </div>
         <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-          이름은 카드에 표시됩니다. 생년월일은 목록에 보이지 않고, 나중에 수정할 때 본인
-          확인용으로 쓰입니다.
+          이름은 카드에 표시됩니다. 카드는 이 브라우저에만 저장되고 다른 사람과 공유되지
+          않습니다.
         </p>
 
         <label className="label mt-3" htmlFor="profile-memo">
@@ -81,7 +81,7 @@ export function ProfileEditor({ editing, onSave, onDelete, onCancel }: Props) {
           maxLength={40}
         />
         <p className="mt-1.5 text-[11px] text-[var(--text-muted)]">
-          메모도 카드 목록에 그대로 보이니 민감한 내용은 적지 마세요.
+          메모는 카드 앞면에 그대로 보이니 민감한 내용은 적지 마세요.
         </p>
 
         {error && (
@@ -96,7 +96,11 @@ export function ProfileEditor({ editing, onSave, onDelete, onCancel }: Props) {
         loading={busy}
         initial={editing?.input}
         submitLabel={editing ? '수정 저장' : '카드 저장'}
-        footnote="생년월일은 서버에 저장되며 카드 목록에는 표시되지 않습니다."
+        footnote={
+          PROFILE_TTL_DAYS === null
+            ? '생년월일은 서버에 저장되지 않고 이 브라우저에만 남습니다.'
+            : `생년월일은 서버에 저장되지 않고 이 브라우저에만 남습니다. ${PROFILE_TTL_DAYS}일 동안 쓰지 않으면 지워집니다.`
+        }
         onCancel={onCancel}
       />
     </section>

@@ -1,24 +1,43 @@
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { SajuView } from '@/components/SajuView';
-import { getProfileStore } from '@/lib/profileStore';
-import { computeSaju } from '@/lib/saju';
+'use client';
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { SajuView } from '@/components/SajuView';
+import { getProfile, touchProfile, type StoredProfile } from '@/lib/profiles';
+import { computeSaju } from '@/lib/saju';
+import type { SajuChart } from '@/lib/saju/types';
+
+type State =
+  | { status: 'loading' }
+  | { status: 'missing' }
+  | { status: 'error'; message: string }
+  | { status: 'ready'; profile: StoredProfile; chart: SajuChart };
 
 /**
  * 카드 한 장의 사주 풀이.
  *
- * 서버 컴포넌트에서 카드를 꺼내 계산한다. 브라우저로 넘길 때는 생년월일이 담긴
- * `input` 과 `basis` 를 뺀다. 계산 근거는 본인 확인을 거쳐야 볼 수 있다.
+ * 카드는 이 브라우저에만 있으므로 서버가 아니라 여기서 꺼내 계산한다.
+ * 그래서 이 주소는 카드를 만든 브라우저에서만 열린다.
  */
-export default async function SajuPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const profile = await getProfileStore().get(id);
-  if (!profile) notFound();
+export default function SajuPage() {
+  const { id } = useParams<{ id: string }>();
+  const [state, setState] = useState<State>({ status: 'loading' });
 
-  const chart = computeSaju(profile.input);
+  useEffect(() => {
+    const profile = getProfile(id);
+    if (!profile) {
+      setState({ status: 'missing' });
+      return;
+    }
+    touchProfile(id);
+    try {
+      setState({ status: 'ready', profile, chart: computeSaju(profile.input) });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '만세력을 계산하지 못했습니다.';
+      setState({ status: 'error', message });
+    }
+  }, [id]);
 
   return (
     <main className="page-shell space-y-4 pb-12">
@@ -29,20 +48,26 @@ export default async function SajuPage({ params }: { params: Promise<{ id: strin
         ← 카드 테이블로
       </Link>
 
-      <SajuView
-        profileId={profile.id}
-        name={profile.label}
-        chart={{
-          sajuYear: chart.sajuYear,
-          pillars: chart.pillars,
-          dayMaster: chart.dayMaster,
-          voidBranches: chart.voidBranches,
-          zodiac: chart.zodiac,
-          analysis: chart.analysis,
-          daeun: chart.daeun,
-          seun: chart.seun,
-        }}
-      />
+      {state.status === 'loading' && (
+        <p className="py-10 text-center text-sm text-[var(--text-muted)]">불러오는 중…</p>
+      )}
+
+      {state.status === 'missing' && (
+        <div className="card text-sm leading-relaxed">
+          이 브라우저에 없는 카드입니다. 카드는 만든 브라우저에만 저장되고, 오래 쓰지 않으면
+          지워집니다.
+        </div>
+      )}
+
+      {state.status === 'error' && (
+        <div className="card text-sm" style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>
+          {state.message}
+        </div>
+      )}
+
+      {state.status === 'ready' && (
+        <SajuView name={state.profile.label} chart={state.chart} />
+      )}
     </main>
   );
 }

@@ -7,6 +7,7 @@ import { CompatibilityResult } from '@/components/CompatibilityResult';
 import { ManseTable } from '@/components/ManseTable';
 import { ReadingPanel } from '@/components/ReadingPanel';
 import { RelationshipPicker } from '@/components/RelationshipPicker';
+import { getProfile, touchProfile, type StoredProfile } from '@/lib/profiles';
 import { DEFAULT_RELATIONSHIP, type RelationshipId } from '@/lib/relationship';
 import type { PublicChart } from '@/lib/compatibilityRequest';
 import type { CompatibilityResult as Result } from '@/lib/saju/compatibility';
@@ -23,7 +24,8 @@ interface ApiResponse {
  * 궁합 결과.
  *
  * 어떤 두 사람을 볼지는 메인 카드 테이블에서 정하고, 여기는 관계 설정과 결과만 맡는다.
- * 카드 id 는 주소로 받으므로 새로고침해도 유지되고 링크로 공유할 수도 있다.
+ * 카드 id 는 주소로 받으므로 새로고침해도 유지된다. 카드는 이 브라우저에만 있으므로
+ * 여기서 꺼내 이름과 입력을 서버로 보낸다. 서버는 계산만 하고 저장하지 않는다.
  */
 function CompatibilityInner() {
   const params = useSearchParams();
@@ -34,17 +36,44 @@ function CompatibilityInner() {
   const [result, setResult] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  /** 이 브라우저에서 꺼낸 두 카드. 없으면 null */
+  const [cards, setCards] = useState<{ a: StoredProfile; b: StoredProfile } | null>(null);
+
+  useEffect(() => {
+    if (!aId || !bId) return;
+    const a = getProfile(aId);
+    const b = getProfile(bId);
+    if (!a || !b) {
+      setError(
+        `${!a ? 'A' : 'B'} 카드가 이 브라우저에 없습니다. 카드는 만든 브라우저에만 저장되고, 오래 쓰지 않으면 지워집니다.`,
+      );
+      return;
+    }
+    touchProfile(a.id);
+    touchProfile(b.id);
+    setCards({ a, b });
+  }, [aId, bId]);
+
+  /** 서버로 보내는 두 사람. 풀이 요청에도 같은 것을 쓴다. */
+  const people = cards && {
+    a: { label: cards.a.label, input: cards.a.input },
+    b: { label: cards.b.label, input: cards.b.input },
+  };
 
   const calculate = useCallback(
     async (relationshipId: RelationshipId) => {
-      if (!aId || !bId) return;
+      if (!cards) return;
       setLoading(true);
       setError('');
       try {
         const response = await fetch('/api/compatibility', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ aId, bId, relationship: relationshipId }),
+          body: JSON.stringify({
+            a: { label: cards.a.label, input: cards.a.input },
+            b: { label: cards.b.label, input: cards.b.input },
+            relationship: relationshipId,
+          }),
         });
         const data = (await response.json()) as ApiResponse;
         if (!response.ok || !data.compatibility) {
@@ -60,7 +89,7 @@ function CompatibilityInner() {
         setLoading(false);
       }
     },
-    [aId, bId],
+    [cards],
   );
 
   // 들어오자마자 한 번 계산한다. 관계는 수치를 바꾸지 않으므로 기본값으로 먼저 보여 준다.
@@ -131,7 +160,7 @@ function CompatibilityInner() {
 
           <ReadingPanel
             endpoint="/api/compatibility/reading"
-            body={{ aId, bId, relationship }}
+            body={{ ...people, relationship }}
             title="궁합 풀이"
             description="위 궁합 계산을 그대로 근거 삼아 풀이해 드려요. 이 단계에서만 AI를 씁니다."
             actionLabel="궁합 풀이 생성"

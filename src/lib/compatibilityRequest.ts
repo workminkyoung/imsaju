@@ -3,20 +3,25 @@
  *
  * 두 개의 궁합 라우트(계산용·풀이용)가 앞부분에서 똑같은 일을 하므로 여기로 모은다.
  *
- * 입력은 **카드 id** 로 받는다. 브라우저가 생년월일을 들고 있을 필요가 없도록
- * 서버가 저장소에서 꺼내 쓴다. 그래야 "이름만 보이고 상세 정보는 감춘다"가 성립한다.
+ * 카드는 브라우저에만 있으므로 두 사람의 이름과 입력을 그대로 받는다.
+ * 계산에만 쓰고 저장하지 않는다.
  */
 
 import { findRelationship, isRelationshipId, type Relationship } from './relationship';
-import { getProfileStore, type StoredProfile } from './profileStore';
 import { computeCompatibility, type CompatibilityResult } from './saju/compatibility';
 import { computeSaju } from './saju';
-import type { SajuChart } from './saju/types';
-import { ValidationError } from './validate';
+import type { SajuChart, SajuInput } from './saju/types';
+import { ValidationError, parseSajuInput } from './validate';
+
+/** 궁합에 올린 한 사람 */
+export interface CompatibilityPerson {
+  label: string;
+  input: SajuInput;
+}
 
 export interface CompatibilityRequest {
-  a: StoredProfile;
-  b: StoredProfile;
+  a: CompatibilityPerson;
+  b: CompatibilityPerson;
   chartA: SajuChart;
   chartB: SajuChart;
   relationship: Relationship;
@@ -34,17 +39,8 @@ export async function loadAndCompute(body: unknown): Promise<CompatibilityReques
   }
   const relationship = findRelationship(b.relationship)!;
 
-  const idA = typeof b.aId === 'string' ? b.aId : '';
-  const idB = typeof b.bId === 'string' ? b.bId : '';
-  if (!idA || !idB) throw new ValidationError('카드를 두 장 골라 주세요.');
-  if (idA === idB) throw new ValidationError('서로 다른 카드를 골라 주세요.');
-
-  const store = getProfileStore();
-  const [a, b2] = await Promise.all([store.get(idA), store.get(idB)]);
-
-  // 어느 쪽이 없어졌는지 알려 줘야 사용자가 다시 고를 수 있다.
-  if (!a) throw new ValidationError('A 카드를 찾을 수 없습니다. 이미 지워졌을 수 있습니다.');
-  if (!b2) throw new ValidationError('B 카드를 찾을 수 없습니다. 이미 지워졌을 수 있습니다.');
+  const a = readPerson(b.a, 'A');
+  const b2 = readPerson(b.b, 'B');
 
   const chartA = withContext(a.label, () => computeSaju(a.input));
   const chartB = withContext(b2.label, () => computeSaju(b2.input));
@@ -86,6 +82,16 @@ export function toPublicChart(chart: SajuChart): PublicChart {
     zodiac: chart.zodiac,
     analysis: chart.analysis,
   };
+}
+
+function readPerson(raw: unknown, slot: 'A' | 'B'): CompatibilityPerson {
+  if (typeof raw !== 'object' || raw === null) {
+    throw new ValidationError(`${slot} 카드가 없습니다. 카드 두 장을 골라 주세요.`);
+  }
+  const person = raw as Record<string, unknown>;
+  const input = withContext(`${slot} 카드`, () => parseSajuInput(person.input));
+  const label = (typeof person.label === 'string' ? person.label.trim() : '') || input.name || slot;
+  return { label: label.slice(0, 40), input };
 }
 
 function withContext<T>(who: string, run: () => T): T {

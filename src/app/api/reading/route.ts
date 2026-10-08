@@ -13,8 +13,7 @@ import {
 } from '@/lib/gemini';
 import { SYSTEM_INSTRUCTIONS, buildVariables, loadPrompt, renderPrompt } from '@/lib/prompt';
 import { computeSaju } from '@/lib/saju';
-import { getProfileStore } from '@/lib/profileStore';
-import { ValidationError } from '@/lib/validate';
+import { ValidationError, parseSajuInput } from '@/lib/validate';
 
 export const runtime = 'nodejs';
 // 상위 모델은 첫 글자까지 수 초가 걸린다. 스트리밍이라 여유를 둔다.
@@ -32,15 +31,8 @@ export async function POST(request: Request) {
   let prompt: string;
 
   try {
-    // 카드 id 로 받는다. 브라우저가 생년월일을 들고 있지 않아도 되게 하기 위해서다.
-    const body = (await request.json()) as Record<string, unknown>;
-    const id = typeof body.profileId === 'string' ? body.profileId : '';
-    if (!id) throw new ValidationError('카드를 지정해 주세요.');
-
-    const profile = await getProfileStore().get(id);
-    if (!profile) throw new ValidationError('카드를 찾을 수 없습니다. 이미 지워졌을 수 있습니다.');
-
-    const chart = computeSaju(profile.input);
+    // 카드는 브라우저에만 있으므로 입력을 그대로 받는다. 계산에만 쓰고 저장하지 않는다.
+    const chart = computeSaju(parseSajuInput(await request.json()));
     prompt = renderPrompt(await loadPrompt('reading'), buildVariables(chart));
   } catch (error) {
     if (error instanceof ValidationError) return errorResponse(error.message, 400);
