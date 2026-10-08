@@ -81,7 +81,7 @@ export function ProfileGrid({
                   <div className="flex items-center gap-2">
                     {picked && (
                       <span
-                        className="flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                        className="flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-[var(--on-accent)]"
                         style={{ background: 'var(--accent)' }}
                       >
                         {order === 0 ? 'A' : 'B'}

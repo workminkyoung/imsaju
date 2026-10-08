@@ -2,10 +2,19 @@
 
 import { useRef } from 'react';
 import type { PublicProfile } from '@/lib/profiles';
+import { useFanConfig } from './fanConfig';
+import { ELEMENTS, type Element } from '@/lib/saju/constants';
 
-/** 카드 한 장의 크기. 슬롯·드래그 고스트도 같은 값을 쓴다. */
-export const CARD_W = 104;
-export const CARD_H = 156;
+/**
+ * 앞면 위 오행 색. 배경이 짙은 초록이라 UI 공통색(ELEMENT_COLOR)은 묻힌다.
+ * 디자인 시스템의 밝은 오행색(--px-*)을 쓴다.
+ */
+const FACE_ELEMENT_COLOR: Record<Element, string> = {
+  목: 'var(--px-wood)', 화: 'var(--px-fire)', 토: 'var(--px-earth)', 금: 'var(--px-metal)', 수: 'var(--px-water)',
+};
+
+/** 배경 이미지의 오행 다섯 칸 가운데 x (%) */
+const ELEMENT_COLUMN_X = [21, 36.2, 50.7, 64.8, 79.2];
 
 type Props =
   | { kind: 'add'; onAdd: () => void }
@@ -25,6 +34,9 @@ type Props =
 const DRAG_THRESHOLD = 6;
 
 export function TableCard(props: Props) {
+  // 카드 크기와 뒤집힘 높이는 설정에서 온다. 튜너로 돌리면 여기부터 바뀐다.
+  const { cardW, cardH, flipLift } = useFanConfig();
+
   if (props.kind === 'add') {
     return (
       <button
@@ -32,11 +44,12 @@ export function TableCard(props: Props) {
         onClick={props.onAdd}
         className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed transition hover:-translate-y-2"
         style={{
-          width: CARD_W,
-          height: CARD_H,
-          borderColor: 'var(--border)',
-          background: 'var(--surface-sunken)',
-          color: 'var(--text-muted)',
+          width: cardW,
+          height: cardH,
+          // 배경(초록) 위에 놓이므로 반투명 크림 점선 + 흰 글자
+          borderColor: 'var(--px-cream)',
+          background: 'rgb(255 255 255 / 0.1)',
+          color: 'var(--px-on-bg)',
         }}
         aria-label="카드 추가"
       >
@@ -75,11 +88,11 @@ export function TableCard(props: Props) {
     <div
       className="relative select-none transition-[transform,opacity] duration-300"
       style={{
-        width: CARD_W,
-        height: CARD_H,
+        width: cardW,
+        height: cardH,
         perspective: 800,
         opacity: dimmed ? 0.35 : 1,
-        transform: flipped ? 'translateY(-26px)' : undefined,
+        transform: flipped ? `translateY(-${flipLift}px)` : undefined,
         cursor: 'grab',
         touchAction: 'none',
       }}
@@ -105,47 +118,30 @@ export function TableCard(props: Props) {
           transform: flipped ? 'rotateY(180deg)' : undefined,
         }}
       >
-        {/* 앞면 — 이름만 */}
+        {/* 앞면 — 배경 이미지 위에 만세력 요약 */}
         <div
-          className="table-card-face absolute inset-0 overflow-hidden rounded-xl border-2"
-          style={{
-            backfaceVisibility: 'hidden',
-            borderColor: 'var(--border)',
-            background: 'var(--card-face)',
-          }}
+          className="table-card-face absolute inset-0 overflow-hidden rounded-xl"
+          style={{ backfaceVisibility: 'hidden' }}
         >
-          {/*
-            이름을 가운데 두면 부채꼴에서 옆 카드에 가려 안 보인다.
-            트럼프 카드처럼 왼쪽 위 모서리에 둬서 겹쳐도 읽히게 한다.
-          */}
-          <span
-            className="absolute left-2 top-2 text-[13px] font-bold leading-tight"
-            style={{ maxWidth: 44, wordBreak: 'keep-all' }}
-          >
-            {profile.label}
-          </span>
-          {/* 가려지지 않는 마지막 카드에서는 가운데 이름도 함께 보인다 */}
-          <span className="absolute inset-x-2 bottom-3 truncate text-center text-xs text-[var(--text-muted)]">
-            {profile.label}
-          </span>
+          <CardFront profile={profile} />
         </div>
 
-        {/* 뒷면 — 개인정보 없이 행동만 */}
+        {/* 뒷면 — 개인정보 없이 행동만. 앞면 그림처럼 짙은 초록 바탕에 크림 테두리 + 안쪽 선 */}
         <div
           className="table-card-face absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl border-2 p-2.5"
           style={{
             backfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
-            borderColor: 'var(--accent)',
-            background: 'var(--accent-soft)',
+            borderColor: 'var(--px-cream)',
+            background: 'var(--px-deep)',
+            boxShadow: '0 2px 10px rgb(0 0 0 / 0.18), inset 0 0 0 4px var(--px-deep), inset 0 0 0 6px var(--px-line)',
           }}
         >
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onViewSaju(); }}
             onPointerDown={(e) => e.stopPropagation()}
-            className="w-full rounded-lg px-2 py-2 text-xs font-semibold text-white transition"
-            style={{ background: 'var(--accent)' }}
+            className="px-btn w-full px-2 py-2 text-xs"
           >
             사주보기
           </button>
@@ -154,12 +150,112 @@ export function TableCard(props: Props) {
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
             onPointerDown={(e) => e.stopPropagation()}
             className="text-[11px] underline-offset-2 transition hover:underline"
-            style={{ color: 'var(--accent)' }}
+            style={{ color: 'var(--px-cream-ink)' }}
           >
             수정
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * 앞면. 배경 이미지(cardSample.png 참고)의 빈칸에 맞춰 이미지 대비 % 좌표로 배치하고,
+ * 글자는 카드 폭 기준(cqw)으로 잡아 카드 크기가 바뀌어도 자리가 유지되게 한다.
+ * 가운데 괄호 틀(캐릭터 자리)은 아직 비워 둔다.
+ */
+export function CardFront({ profile }: { profile: PublicProfile }) {
+  const { face } = profile;
+  const max = face ? Math.max(...ELEMENTS.map((e) => face.elements[e]), 1) : 1;
+
+  return (
+    <div
+      className="relative size-full select-none"
+      style={{
+        containerType: 'inline-size',
+        background: 'var(--card-face) url(/cards/cardBase.png) center / 100% 100% no-repeat',
+        imageRendering: 'pixelated',
+        color: 'var(--card-ink)',
+      }}
+    >
+      {/* 이름 — 위쪽 ✦ 사이 */}
+      <span
+        className="absolute truncate text-center font-bold leading-none"
+        style={{ left: '31%', right: '31%', top: '12%', fontSize: '7cqw' }}
+      >
+        {/*
+          호칭은 화면에만 붙인다. 저장된 이름은 그대로다.
+          ✦ 사이 칸이 좁아 "김민경 프로"까지 한 줄에 들어가도록 글자를 조금 줄였다.
+        */}
+        {profile.label} 프로
+      </span>
+
+      {face && (
+        <>
+          {/* 띠·일주 — ─✦ 사이 */}
+          <span
+            className="absolute truncate text-center leading-none"
+            style={{ left: '23%', right: '23%', top: '36.8%', fontSize: '3.8cqw', letterSpacing: '-0.02em' }}
+          >
+            {face.identity}
+          </span>
+
+          {/* 오행 막대 — 가장 강한 오행을 꽉 찬 막대로 */}
+          {ELEMENTS.map((e, i) => (
+            <span
+              key={e}
+              className="absolute overflow-hidden rounded-full"
+              style={{
+                left: `${ELEMENT_COLUMN_X[i] - 5.5}%`,
+                width: '11%',
+                top: '58.4%',
+                height: '1.3%',
+                background: 'rgb(0 0 0 / 0.4)',
+              }}
+              title={`${e} ${face.elements[e]}%`}
+            >
+              <span
+                className="block h-full rounded-full"
+                style={{
+                  width: `${(face.elements[e] / max) * 100}%`,
+                  background: FACE_ELEMENT_COLOR[e],
+                }}
+              />
+            </span>
+          ))}
+
+          {/* 주요 키워드 */}
+          <div
+            className="absolute flex flex-wrap items-center justify-center"
+            style={{ left: '14%', right: '14%', top: '72.6%', bottom: '20.4%', gap: '2cqw' }}
+          >
+            {face.keywords.map((k) => (
+              <span
+                key={k.text}
+                className="whitespace-nowrap leading-none"
+                style={{
+                  fontSize: '3.8cqw',
+                  padding: '1.4cqw 2cqw',
+                  border: `0.5cqw solid ${FACE_ELEMENT_COLOR[k.element]}`,
+                  borderRadius: '1.5cqw',
+                  color: FACE_ELEMENT_COLOR[k.element],
+                }}
+              >
+                {k.text}
+              </span>
+            ))}
+          </div>
+
+          {/* 한 줄 소개 */}
+          <span
+            className="absolute truncate text-center leading-none"
+            style={{ left: '16%', right: '16%', top: '86.4%', fontSize: '4cqw' }}
+          >
+            ✦ {face.tagline} ✦
+          </span>
+        </>
+      )}
     </div>
   );
 }

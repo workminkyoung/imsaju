@@ -12,8 +12,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <body>
-        <div className="mx-auto min-h-screen max-w-5xl px-4 py-8 sm:px-6">
-          <header className="mb-8 flex items-baseline justify-between gap-4">
+        {/*
+          바깥 틀은 높이만 잡고 폭은 쥐지 않는다. 메인 카드 테이블이 화면 좌우 끝과
+          아래 끝까지 이어져야 해서, 가운데 폭은 각 페이지가 .page-shell 로 정한다.
+        */}
+        <div className="flex min-h-screen flex-col">
+          <header className="page-shell mb-8 flex items-baseline justify-between gap-4 pt-8">
             <Link href="/" className="group">
               <h1 className="ganji text-2xl font-bold tracking-tight">萬歲曆</h1>
               <p className="mt-0.5 text-xs text-[var(--text-muted)]">
@@ -22,25 +26,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
             <Link
               href="/admin"
-              className="text-xs text-[var(--text-muted)] transition hover:text-[var(--accent)]"
+              className="text-xs text-[var(--text-muted)] transition hover:text-[var(--px-cream)]"
             >
               관리자
             </Link>
           </header>
 
           {children}
-
-          <footer className="mt-16 border-t pt-6 text-xs leading-relaxed text-[var(--text-muted)]"
-            style={{ borderColor: 'var(--border)' }}>
-            <p>
-              만세력은 천문 계산(태양 겉보기 황경)과 IANA 표준시 데이터베이스를 근거로 산출하며,
-              LLM을 쓰지 않으므로 같은 입력에 항상 같은 결과가 나옵니다.
-            </p>
-            <p className="mt-1.5">
-              사주풀이 텍스트는 Gemini가 생성한 전통 명리학 해석입니다. 재미와 참고를 위한 것이며
-              의료·법률·투자 판단의 근거로 삼지 마세요.
-            </p>
-          </footer>
         </div>
       </body>
     </html>

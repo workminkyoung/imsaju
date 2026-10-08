@@ -252,7 +252,7 @@ export default function AdminPage() {
 
   if (!authed) {
     return (
-      <main className="mx-auto max-w-sm">
+      <main className="mx-auto w-full max-w-sm px-4 pb-12 sm:px-6">
         <form onSubmit={login} className="card">
           <h2 className="text-base font-semibold">관리자 로그인</h2>
           <p className="mt-1 text-xs text-[var(--text-muted)]">
@@ -271,8 +271,7 @@ export default function AdminPage() {
           )}
           <button
             type="submit"
-            className="mt-4 w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white"
-            style={{ background: 'var(--accent)' }}
+            className="px-btn mt-4 w-full px-4 py-2.5 text-sm"
           >
             로그인
           </button>
@@ -286,7 +285,7 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="space-y-4">
+    <main className="page-shell space-y-4 pb-12">
       <section className="card">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-base font-semibold">프롬프트 편집</h2>
@@ -384,8 +383,7 @@ export default function AdminPage() {
                 type="button"
                 onClick={save}
                 disabled={busy}
-                className="rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                style={{ background: 'var(--accent)' }}
+                className="px-btn px-4 py-2 text-sm"
               >
                 저장
               </button>

@@ -69,6 +69,13 @@ describe('목록에 생년월일이 새지 않는다', () => {
     expect(json).not.toContain('970304');
   });
 
+  it('앞면 요약은 함께 나가되 날짜는 담지 않는다', () => {
+    const published = toPublic(makeProfile());
+    expect(published.face?.identity).toMatch(/띠 · .+일주$/);
+    const json = JSON.stringify(published.face);
+    expect(json).not.toContain('1997');
+  });
+
   it('궁합 응답용 차트에서 입력 원문과 계산 근거가 빠진다', () => {
     const chart = computeSaju(INPUT);
     const published = toPublicChart(chart) as unknown as Record<string, unknown>;

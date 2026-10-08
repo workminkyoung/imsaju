@@ -105,8 +105,7 @@ export function ReadingPanel({
           <button
             type="button"
             onClick={generate}
-            className="rounded-lg px-4 py-2 text-sm font-semibold text-white transition"
-            style={{ background: 'var(--accent)' }}
+            className="px-btn px-4 py-2 text-sm"
           >
             {status === 'idle' ? actionLabel : '다시 생성'}
           </button>

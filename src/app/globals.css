@@ -1,44 +1,61 @@
 @import 'tailwindcss';
 
 /*
-  만세력은 한자와 한글이 섞이고 표가 많다. 가독성이 전부라
-  색과 간격을 토큰으로 묶어 화면 전체에서 같은 규칙을 쓴다.
+  픽셀 디자인 시스템 — 카드·버튼 이미지에서 뽑은 색. 설명은 docs/design-system.md
 */
 :root {
-  --bg: #faf8f4;
-  --surface: #ffffff;
-  --surface-sunken: #f2efe8;
-  --border: #e2ddd2;
-  --text: #221f1a;
-  --text-muted: #6b6459;
-  --accent: #8b5e34;
-  --accent-soft: #f0e6d9;
+  --px-bg: #548463;
+  --px-on-bg: #ffffff;
+  --px-on-bg-muted: rgb(255 255 255 / 0.72);
+  --px-cream: #e0d8b0;
+  --px-cream-ink: #f3ecd0;
+  --px-deep: #133829;
+  --px-panel: #1d4e39;
+  --px-line: #408058;
+  --px-slot: #456d53;
+  --px-outline: #282020;
+  --px-btn: #507f61;
+  --px-btn-hover: #88b382;
+  --px-btn-pressed: #375a43;
+  --px-btn-disabled: #818d81;
 
-  /* 오행 색 — 계산 결과와 UI가 같은 값을 쓴다 */
-  --wood: #2f9e5e;
-  --fire: #d64545;
-  --earth: #b08340;
-  --metal: #8a8f98;
-  --water: #2f6fb0;
+  /* 짙은 초록 카드 위 오행색 — UI 공통 오행색(--wood 등)보다 밝다 */
+  --px-wood: #5fd18a;
+  --px-fire: #ff6b6b;
+  --px-earth: #e8b85a;
+  --px-metal: #cfd4dc;
+  --px-water: #5aa2ff;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #171512;
-    --surface: #211e1a;
-    --surface-sunken: #1a1815;
-    --border: #35302a;
-    --text: #ece7de;
-    --text-muted: #9c9388;
-    --accent: #c99a6b;
-    --accent-soft: #2e2720;
+/*
+  만세력은 한자와 한글이 섞이고 표가 많다. 가독성이 전부라
+  색과 간격을 토큰으로 묶어 화면 전체에서 같은 규칙을 쓴다.
+  화면용 토큰은 모두 픽셀 토큰(--px-*)을 가리킨다. 픽셀 그림이 모드와 상관없이
+  같은 색이라 라이트·다크 구분 없이 한 벌만 둔다.
+*/
+:root {
+  --bg: var(--px-bg);
+  /* 패널(.card·.surface) — 카드 안 패널처럼 짙은 초록 */
+  --surface: var(--px-panel);
+  --surface-sunken: var(--px-deep);
+  --border: var(--px-line);
+  /* 패널 안 글자 */
+  --panel-text: var(--px-cream-ink);
+  --panel-text-muted: rgb(243 236 208 / 0.68);
+  /* 바탕(배경) 위 글자. 패널 안에서는 아래 .card/.surface 가 panel-* 로 되돌린다 */
+  --text: var(--px-on-bg);
+  --text-muted: var(--px-on-bg-muted);
+  /* 강조 — 크림. 크림 바탕 위 글자는 --on-accent */
+  --accent: var(--px-cream);
+  --accent-soft: var(--px-slot);
+  --on-accent: var(--px-deep);
 
-    --wood: #56c98a;
-    --fire: #ef7272;
-    --earth: #d3a463;
-    --metal: #b2b7c0;
-    --water: #5f9bd8;
-  }
+  /* 오행 색 — 계산 결과와 UI가 같은 값을 쓴다. 패널이 짙은 초록이라 밝은 톤 */
+  --wood: var(--px-wood);
+  --fire: var(--px-fire);
+  --earth: var(--px-earth);
+  --metal: var(--px-metal);
+  --water: var(--px-water);
 }
 
 @theme inline {
@@ -53,7 +70,8 @@
 }
 
 html {
-  color-scheme: light dark;
+  /* 패널이 늘 짙은 초록이라 폼 컨트롤·스크롤바도 어두운 쪽으로 */
+  color-scheme: dark;
 }
 
 body {
@@ -75,13 +93,13 @@ body {
 /* 폼 요소 공통 */
 .field {
   @apply w-full rounded-lg border px-3 py-2 text-sm outline-none transition;
-  background: var(--surface);
+  background: var(--surface-sunken);
   border-color: var(--border);
   color: var(--text);
 }
 .field:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .label {
@@ -93,6 +111,31 @@ body {
   @apply rounded-xl border p-5;
   background: var(--surface);
   border-color: var(--border);
+  /* 픽셀 규칙 — 흐린 그림자 대신 딱딱한 오프셋 그림자 */
+  box-shadow: 3px 3px 0 var(--px-outline);
+}
+.card .card {
+  box-shadow: none;
+}
+
+/*
+  패널 범위. 배경 위 글자는 흰색이지만 패널 바탕은 밝으니(다크 모드는 어두우니)
+  그 안에서는 글자 토큰을 패널용으로 되돌린다. .card 가 아닌 패널은 .surface 를 붙인다.
+*/
+.card,
+.surface,
+.field {
+  --text: var(--panel-text);
+  --text-muted: var(--panel-text-muted);
+  color: var(--text);
+}
+
+/*
+  페이지 가운데 폭. 레이아웃이 폭을 쥐지 않으므로 본문은 이 틀을 직접 두른다.
+  화면 끝까지 깔려야 하는 메인 카드 테이블만 이 틀 밖에 둔다.
+*/
+.page-shell {
+  @apply mx-auto w-full max-w-5xl px-4 sm:px-6;
 }
 
 /* 사주풀이 마크다운 출력 */
@@ -137,30 +180,14 @@ body {
 
 /* ── 카드 테이블 ────────────────────────────────────────────────────────── */
 
-/*
-  메인 화면은 카드를 늘어놓는 상판이다. 배경을 살짝 눌러 카드가 떠 보이게 한다.
-  색은 테마 토큰에서 끌어와 밝은 모드·어두운 모드 모두에서 성립한다.
-*/
-.table-felt {
-  background:
-    radial-gradient(
-      120% 80% at 50% 110%,
-      color-mix(in srgb, var(--accent) 12%, transparent) 0%,
-      transparent 60%
-    ),
-    var(--surface-sunken);
-  border: 1px solid var(--border);
-  border-radius: 1rem;
-}
-
 /* 카드가 배경에 묻히지 않게 테두리와 그림자를 준다 */
 .table-card-face {
   box-shadow: 0 2px 10px rgb(0 0 0 / 0.18);
 }
 
 /*
-  카드 앞면은 상판보다 밝아야 떠 보인다. surface 를 그대로 쓰면 어두운 모드에서
-  배경과 거의 같은 색이라 이름이 묻힌다.
+  카드 앞면은 페이지 배경보다 밝아야 떠 보인다. surface 를 그대로 쓰면 어두운
+  모드에서 배경과 거의 같은 색이라 이름이 묻힌다.
 */
 :root {
   --card-face: #ffffff;
@@ -172,4 +199,69 @@ body {
 }
 :root[data-theme='dark'] {
   --card-face: #35302a;
+}
+
+/* 카드 앞면 글자색 — 배경 이미지가 모드와 상관없이 짙은 초록이라 한 가지 색만 쓴다 */
+:root {
+  --card-ink: var(--px-cream-ink);
+}
+
+/* 픽셀 이미지는 늘려도 흐려지지 않게 */
+.pixelated {
+  image-rendering: pixelated;
+}
+
+/*
+  궁합보기 버튼 — 글씨까지 든 이미지 4장(86×40)을 원본 크기로 쓴다.
+  상태별로 그림만 바꾼다. 글자는 스크린리더용으로만 남긴다.
+*/
+.px-btn-compat {
+  width: 86px;
+  height: 40px;
+  border: 0;
+  padding: 0;
+  background: url(/cards/btnDefault.png) center / 100% 100% no-repeat;
+  image-rendering: pixelated;
+  cursor: pointer;
+}
+.px-btn-compat:hover:not(:disabled) {
+  background-image: url(/cards/btnHover.png);
+}
+.px-btn-compat:active:not(:disabled) {
+  background-image: url(/cards/btnPressed.png);
+}
+.px-btn-compat:disabled {
+  background-image: url(/cards/btnDisabled.png);
+  cursor: not-allowed;
+}
+.px-btn-compat:focus-visible {
+  outline: 2px solid var(--px-cream);
+  outline-offset: 3px;
+}
+
+/*
+  기본 버튼 — 궁합보기 이미지 버튼과 같은 4상태 색을 CSS 로 옮긴 것.
+  글씨가 바뀌는 버튼(로딩 문구 등)은 이미지로 못 그리니 이걸 쓴다.
+*/
+.px-btn {
+  @apply rounded-lg font-semibold transition;
+  background: var(--px-btn);
+  color: var(--px-on-bg);
+  border: 2px solid var(--px-outline);
+  box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.2);
+}
+.px-btn:hover:not(:disabled) {
+  background: var(--px-btn-hover);
+}
+.px-btn:active:not(:disabled) {
+  background: var(--px-btn-pressed);
+  box-shadow: inset 0 3px 0 rgb(0 0 0 / 0.2);
+}
+.px-btn:disabled {
+  background: var(--px-btn-disabled);
+  cursor: not-allowed;
+}
+.px-btn:focus-visible {
+  outline: 2px solid var(--px-cream);
+  outline-offset: 2px;
 }
