@@ -30,46 +30,32 @@
 /*
   만세력은 한자와 한글이 섞이고 표가 많다. 가독성이 전부라
   색과 간격을 토큰으로 묶어 화면 전체에서 같은 규칙을 쓴다.
+  화면용 토큰은 모두 픽셀 토큰(--px-*)을 가리킨다. 픽셀 그림이 모드와 상관없이
+  같은 색이라 라이트·다크 구분 없이 한 벌만 둔다.
 */
 :root {
   --bg: var(--px-bg);
-  --surface: #ffffff;
-  --surface-sunken: #f2efe8;
-  --border: #e2ddd2;
-  /* 패널(.card·.surface) 안 글자 */
-  --panel-text: #221f1a;
-  --panel-text-muted: #6b6459;
+  /* 패널(.card·.surface) — 카드 안 패널처럼 짙은 초록 */
+  --surface: var(--px-panel);
+  --surface-sunken: var(--px-deep);
+  --border: var(--px-line);
+  /* 패널 안 글자 */
+  --panel-text: var(--px-cream-ink);
+  --panel-text-muted: rgb(243 236 208 / 0.68);
   /* 바탕(배경) 위 글자. 패널 안에서는 아래 .card/.surface 가 panel-* 로 되돌린다 */
   --text: var(--px-on-bg);
   --text-muted: var(--px-on-bg-muted);
-  --accent: #8b5e34;
-  --accent-soft: #f0e6d9;
+  /* 강조 — 크림. 크림 바탕 위 글자는 --on-accent */
+  --accent: var(--px-cream);
+  --accent-soft: var(--px-slot);
+  --on-accent: var(--px-deep);
 
-  /* 오행 색 — 계산 결과와 UI가 같은 값을 쓴다 */
-  --wood: #2f9e5e;
-  --fire: #d64545;
-  --earth: #b08340;
-  --metal: #8a8f98;
-  --water: #2f6fb0;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: var(--px-bg);
-    --surface: #211e1a;
-    --surface-sunken: #1a1815;
-    --border: #35302a;
-    --panel-text: #ece7de;
-    --panel-text-muted: #9c9388;
-    --accent: #c99a6b;
-    --accent-soft: #2e2720;
-
-    --wood: #56c98a;
-    --fire: #ef7272;
-    --earth: #d3a463;
-    --metal: #b2b7c0;
-    --water: #5f9bd8;
-  }
+  /* 오행 색 — 계산 결과와 UI가 같은 값을 쓴다. 패널이 짙은 초록이라 밝은 톤 */
+  --wood: var(--px-wood);
+  --fire: var(--px-fire);
+  --earth: var(--px-earth);
+  --metal: var(--px-metal);
+  --water: var(--px-water);
 }
 
 @theme inline {
@@ -84,7 +70,8 @@
 }
 
 html {
-  color-scheme: light dark;
+  /* 패널이 늘 짙은 초록이라 폼 컨트롤·스크롤바도 어두운 쪽으로 */
+  color-scheme: dark;
 }
 
 body {
@@ -106,13 +93,13 @@ body {
 /* 폼 요소 공통 */
 .field {
   @apply w-full rounded-lg border px-3 py-2 text-sm outline-none transition;
-  background: var(--surface);
+  background: var(--surface-sunken);
   border-color: var(--border);
   color: var(--text);
 }
 .field:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .label {
@@ -124,6 +111,11 @@ body {
   @apply rounded-xl border p-5;
   background: var(--surface);
   border-color: var(--border);
+  /* 픽셀 규칙 — 흐린 그림자 대신 딱딱한 오프셋 그림자 */
+  box-shadow: 3px 3px 0 var(--px-outline);
+}
+.card .card {
+  box-shadow: none;
 }
 
 /*
@@ -245,4 +237,31 @@ body {
 .px-btn-compat:focus-visible {
   outline: 2px solid var(--px-cream);
   outline-offset: 3px;
+}
+
+/*
+  기본 버튼 — 궁합보기 이미지 버튼과 같은 4상태 색을 CSS 로 옮긴 것.
+  글씨가 바뀌는 버튼(로딩 문구 등)은 이미지로 못 그리니 이걸 쓴다.
+*/
+.px-btn {
+  @apply rounded-lg font-semibold transition;
+  background: var(--px-btn);
+  color: var(--px-on-bg);
+  border: 2px solid var(--px-outline);
+  box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.2);
+}
+.px-btn:hover:not(:disabled) {
+  background: var(--px-btn-hover);
+}
+.px-btn:active:not(:disabled) {
+  background: var(--px-btn-pressed);
+  box-shadow: inset 0 3px 0 rgb(0 0 0 / 0.2);
+}
+.px-btn:disabled {
+  background: var(--px-btn-disabled);
+  cursor: not-allowed;
+}
+.px-btn:focus-visible {
+  outline: 2px solid var(--px-cream);
+  outline-offset: 2px;
 }

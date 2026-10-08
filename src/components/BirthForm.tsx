@@ -281,8 +281,7 @@ export function BirthForm({
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 rounded-lg px-4 py-3 text-sm font-semibold text-white transition disabled:opacity-50"
-          style={{ background: 'var(--accent)' }}
+          className="px-btn flex-1 px-4 py-3 text-sm"
         >
           {loading ? '계산 중…' : submitLabel}
         </button>

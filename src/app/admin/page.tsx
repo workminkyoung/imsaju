@@ -271,8 +271,7 @@ export default function AdminPage() {
           )}
           <button
             type="submit"
-            className="mt-4 w-full rounded-lg px-4 py-2.5 text-sm font-semibold text-white"
-            style={{ background: 'var(--accent)' }}
+            className="px-btn mt-4 w-full px-4 py-2.5 text-sm"
           >
             로그인
           </button>
@@ -384,8 +383,7 @@ export default function AdminPage() {
                 type="button"
                 onClick={save}
                 disabled={busy}
-                className="rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-                style={{ background: 'var(--accent)' }}
+                className="px-btn px-4 py-2 text-sm"
               >
                 저장
               </button>

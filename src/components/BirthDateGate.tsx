@@ -98,8 +98,7 @@ export function BirthDateGate({ profile, onVerified, onCancel }: Props) {
           <button
             type="submit"
             disabled={busy || value.trim().length === 0}
-            className="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition disabled:opacity-50"
-            style={{ background: 'var(--accent)' }}
+            className="px-btn flex-1 px-4 py-2.5 text-sm"
           >
             {busy ? '확인 중…' : '확인'}
           </button>

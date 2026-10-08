@@ -231,8 +231,7 @@ export function FanTuner({ config, onChange, metrics }: Props) {
         <button
           type="button"
           onClick={copy}
-          className="flex-1 rounded-lg px-3 py-2 text-xs font-semibold text-white transition"
-          style={{ background: 'var(--accent)' }}
+          className="px-btn flex-1 px-3 py-2 text-xs"
         >
           {copied ? '복사했습니다' : '코드 복사'}
         </button>

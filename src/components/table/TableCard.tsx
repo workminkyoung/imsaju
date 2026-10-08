@@ -126,22 +126,22 @@ export function TableCard(props: Props) {
           <CardFront profile={profile} />
         </div>
 
-        {/* 뒷면 — 개인정보 없이 행동만 */}
+        {/* 뒷면 — 개인정보 없이 행동만. 앞면 그림처럼 짙은 초록 바탕에 크림 테두리 + 안쪽 선 */}
         <div
           className="table-card-face absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl border-2 p-2.5"
           style={{
             backfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
-            borderColor: 'var(--accent)',
-            background: 'var(--accent-soft)',
+            borderColor: 'var(--px-cream)',
+            background: 'var(--px-deep)',
+            boxShadow: '0 2px 10px rgb(0 0 0 / 0.18), inset 0 0 0 4px var(--px-deep), inset 0 0 0 6px var(--px-line)',
           }}
         >
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onViewSaju(); }}
             onPointerDown={(e) => e.stopPropagation()}
-            className="w-full rounded-lg px-2 py-2 text-xs font-semibold text-white transition"
-            style={{ background: 'var(--accent)' }}
+            className="px-btn w-full px-2 py-2 text-xs"
           >
             사주보기
           </button>
@@ -150,7 +150,7 @@ export function TableCard(props: Props) {
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
             onPointerDown={(e) => e.stopPropagation()}
             className="text-[11px] underline-offset-2 transition hover:underline"
-            style={{ color: 'var(--accent)' }}
+            style={{ color: 'var(--px-cream-ink)' }}
           >
             수정
           </button>
