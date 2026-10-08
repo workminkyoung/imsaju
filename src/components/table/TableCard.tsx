@@ -181,9 +181,11 @@ export function CardFront({ profile }: { profile: PublicProfile }) {
       {/* 이름 — 위쪽 ✦ 사이 */}
       <span
         className="absolute truncate text-center font-bold leading-none"
-        style={{ left: '33%', right: '33%', top: '11.6%', fontSize: '8cqw' }}
+        style={{ left: '31%', right: '31%', top: '11.6%', fontSize: '8cqw' }}
       >
         {profile.label}
+        {/* 호칭은 화면에만 붙인다. 저장된 이름은 그대로다. */}
+        <span style={{ fontSize: '5.5cqw', opacity: 0.85 }}> 프로</span>
       </span>
 
       {face && (
