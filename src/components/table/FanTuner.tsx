@@ -91,7 +91,7 @@ export function FanTuner({ config, onChange, metrics }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-4 right-4 z-[70] rounded-full border px-3 py-1.5 text-[11px] font-medium shadow-lg transition hover:opacity-100"
+        className="surface fixed bottom-4 right-4 z-[70] rounded-full border px-3 py-1.5 text-[11px] font-medium shadow-lg transition hover:opacity-100"
         style={{
           borderColor: 'var(--border)',
           background: 'var(--surface)',
@@ -107,7 +107,7 @@ export function FanTuner({ config, onChange, metrics }: Props) {
 
   return (
     <aside
-      className="fixed inset-y-0 right-0 z-[70] flex w-[min(360px,92vw)] flex-col border-l shadow-2xl"
+      className="surface fixed inset-y-0 right-0 z-[70] flex w-[min(360px,92vw)] flex-col border-l shadow-2xl"
       style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
       aria-label="카드 테이블 튜너"
     >

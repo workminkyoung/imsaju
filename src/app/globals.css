@@ -1,16 +1,47 @@
 @import 'tailwindcss';
 
 /*
+  픽셀 디자인 시스템 — 카드·버튼 이미지에서 뽑은 색. 설명은 docs/design-system.md
+*/
+:root {
+  --px-bg: #548463;
+  --px-on-bg: #ffffff;
+  --px-on-bg-muted: rgb(255 255 255 / 0.72);
+  --px-cream: #e0d8b0;
+  --px-cream-ink: #f3ecd0;
+  --px-deep: #133829;
+  --px-panel: #1d4e39;
+  --px-line: #408058;
+  --px-slot: #456d53;
+  --px-outline: #282020;
+  --px-btn: #507f61;
+  --px-btn-hover: #88b382;
+  --px-btn-pressed: #375a43;
+  --px-btn-disabled: #818d81;
+
+  /* 짙은 초록 카드 위 오행색 — UI 공통 오행색(--wood 등)보다 밝다 */
+  --px-wood: #5fd18a;
+  --px-fire: #ff6b6b;
+  --px-earth: #e8b85a;
+  --px-metal: #cfd4dc;
+  --px-water: #5aa2ff;
+}
+
+/*
   만세력은 한자와 한글이 섞이고 표가 많다. 가독성이 전부라
   색과 간격을 토큰으로 묶어 화면 전체에서 같은 규칙을 쓴다.
 */
 :root {
-  --bg: #faf8f4;
+  --bg: var(--px-bg);
   --surface: #ffffff;
   --surface-sunken: #f2efe8;
   --border: #e2ddd2;
-  --text: #221f1a;
-  --text-muted: #6b6459;
+  /* 패널(.card·.surface) 안 글자 */
+  --panel-text: #221f1a;
+  --panel-text-muted: #6b6459;
+  /* 바탕(배경) 위 글자. 패널 안에서는 아래 .card/.surface 가 panel-* 로 되돌린다 */
+  --text: var(--px-on-bg);
+  --text-muted: var(--px-on-bg-muted);
   --accent: #8b5e34;
   --accent-soft: #f0e6d9;
 
@@ -24,12 +55,12 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #171512;
+    --bg: var(--px-bg);
     --surface: #211e1a;
     --surface-sunken: #1a1815;
     --border: #35302a;
-    --text: #ece7de;
-    --text-muted: #9c9388;
+    --panel-text: #ece7de;
+    --panel-text-muted: #9c9388;
     --accent: #c99a6b;
     --accent-soft: #2e2720;
 
@@ -93,6 +124,18 @@ body {
   @apply rounded-xl border p-5;
   background: var(--surface);
   border-color: var(--border);
+}
+
+/*
+  패널 범위. 배경 위 글자는 흰색이지만 패널 바탕은 밝으니(다크 모드는 어두우니)
+  그 안에서는 글자 토큰을 패널용으로 되돌린다. .card 가 아닌 패널은 .surface 를 붙인다.
+*/
+.card,
+.surface,
+.field {
+  --text: var(--panel-text);
+  --text-muted: var(--panel-text-muted);
+  color: var(--text);
 }
 
 /*
@@ -168,5 +211,38 @@ body {
 
 /* 카드 앞면 글자색 — 배경 이미지가 모드와 상관없이 짙은 초록이라 한 가지 색만 쓴다 */
 :root {
-  --card-ink: #f3ecd0;
+  --card-ink: var(--px-cream-ink);
+}
+
+/* 픽셀 이미지는 늘려도 흐려지지 않게 */
+.pixelated {
+  image-rendering: pixelated;
+}
+
+/*
+  궁합보기 버튼 — 글씨까지 든 이미지 4장(86×40)을 1.5배로 쓴다.
+  상태별로 그림만 바꾼다. 글자는 스크린리더용으로만 남긴다.
+*/
+.px-btn-compat {
+  width: 129px;
+  height: 60px;
+  border: 0;
+  padding: 0;
+  background: url(/cards/btnDefault.png) center / 100% 100% no-repeat;
+  image-rendering: pixelated;
+  cursor: pointer;
+}
+.px-btn-compat:hover:not(:disabled) {
+  background-image: url(/cards/btnHover.png);
+}
+.px-btn-compat:active:not(:disabled) {
+  background-image: url(/cards/btnPressed.png);
+}
+.px-btn-compat:disabled {
+  background-image: url(/cards/btnDisabled.png);
+  cursor: not-allowed;
+}
+.px-btn-compat:focus-visible {
+  outline: 2px solid var(--px-cream);
+  outline-offset: 3px;
 }

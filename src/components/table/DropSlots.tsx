@@ -27,36 +27,38 @@ export function DropSlots({ slots, hovered, onClear, slotRefs }: Props) {
           <div key={index} className="flex flex-col items-center gap-2">
             <span
               className="text-xs font-semibold tracking-[0.2em]"
-              style={{ color: active ? 'var(--accent)' : 'var(--text-muted)' }}
+              style={{ color: active ? 'var(--px-cream)' : 'var(--px-on-bg)' }}
             >
               {LABELS[index]}
             </span>
 
+            {/* 칸 바탕은 픽셀 이미지(cardPlace.png, 카드와 같은 160×222) */}
             <div
               ref={(el) => {
                 if (slotRefs.current) slotRefs.current[index] = el;
               }}
-              className="flex items-center justify-center rounded-xl border-2 border-dashed transition"
+              className="pixelated flex items-center justify-center transition"
               style={{
                 width: cardW,
                 height: cardH,
-                borderColor: active || profile ? 'var(--accent)' : 'var(--border)',
-                background: active ? 'var(--accent-soft)' : 'var(--surface-sunken)',
+                background: 'url(/cards/cardPlace.png) center / 100% 100% no-repeat',
+                color: 'var(--px-cream-ink)',
                 transform: active ? 'scale(1.04)' : undefined,
+                filter: active ? 'brightness(1.15)' : undefined,
               }}
             >
               {profile ? (
                 <button
                   type="button"
                   onClick={() => onClear(index)}
-                  className="flex size-full flex-col items-center justify-center gap-1.5 rounded-xl p-2"
+                  className="flex size-full flex-col items-center justify-center gap-1.5 p-4"
                   title="빼기"
                 >
                   <span className="line-clamp-3 text-sm font-semibold">{profile.label}</span>
-                  <span className="text-[10px] text-[var(--text-muted)]">누르면 빼기</span>
+                  <span className="text-[10px] opacity-70">누르면 빼기</span>
                 </button>
               ) : (
-                <span className="text-[11px] text-[var(--text-muted)]">여기로 끌어오기</span>
+                <span className="text-[11px] opacity-80">여기로 끌어오기</span>
               )}
             </div>
           </div>

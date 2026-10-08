@@ -24,7 +24,7 @@ export default async function SajuPage({ params }: { params: Promise<{ id: strin
     <main className="page-shell space-y-4 pb-12">
       <Link
         href="/"
-        className="inline-block text-xs text-[var(--text-muted)] transition hover:text-[var(--accent)]"
+        className="inline-block text-xs text-[var(--text-muted)] transition hover:text-[var(--px-cream)]"
       >
         ← 카드 테이블로
       </Link>

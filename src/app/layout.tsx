@@ -26,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
             <Link
               href="/admin"
-              className="text-xs text-[var(--text-muted)] transition hover:text-[var(--accent)]"
+              className="text-xs text-[var(--text-muted)] transition hover:text-[var(--px-cream)]"
             >
               관리자
             </Link>

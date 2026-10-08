@@ -7,10 +7,10 @@ import { ELEMENTS, type Element } from '@/lib/saju/constants';
 
 /**
  * 앞면 위 오행 색. 배경이 짙은 초록이라 UI 공통색(ELEMENT_COLOR)은 묻힌다.
- * 배경 이미지의 오행 아이콘 색에 맞춘 밝은 톤을 쓴다.
+ * 디자인 시스템의 밝은 오행색(--px-*)을 쓴다.
  */
 const FACE_ELEMENT_COLOR: Record<Element, string> = {
-  목: '#5fd18a', 화: '#ff6b6b', 토: '#e8b85a', 금: '#cfd4dc', 수: '#5aa2ff',
+  목: 'var(--px-wood)', 화: 'var(--px-fire)', 토: 'var(--px-earth)', 금: 'var(--px-metal)', 수: 'var(--px-water)',
 };
 
 /** 배경 이미지의 오행 다섯 칸 가운데 x (%) */
@@ -46,9 +46,10 @@ export function TableCard(props: Props) {
         style={{
           width: cardW,
           height: cardH,
-          borderColor: 'var(--border)',
-          background: 'var(--surface-sunken)',
-          color: 'var(--text-muted)',
+          // 배경(초록) 위에 놓이므로 반투명 크림 점선 + 흰 글자
+          borderColor: 'var(--px-cream)',
+          background: 'rgb(255 255 255 / 0.1)',
+          color: 'var(--px-on-bg)',
         }}
         aria-label="카드 추가"
       >

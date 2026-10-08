@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { preload } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { CardFan } from './CardFan';
 import { DropSlots } from './DropSlots';
@@ -55,6 +56,11 @@ export function CardTable() {
   const [drag, setDrag] = useState<Drag | null>(null);
   const [hovered, setHovered] = useState<number | null>(null);
   const [edit, setEdit] = useState<EditState>({ mode: 'none' });
+
+  // 버튼 상태 그림은 처음 바뀔 때 깜빡이지 않게 미리 받아 둔다.
+  for (const state of ['Default', 'Hover', 'Pressed', 'Disabled']) {
+    preload(`/cards/btn${state}.png`, { as: 'image' });
+  }
 
   /*
    * 카드 테이블의 생김새. 기본값으로 먼저 그리고, 브라우저에 저장해 둔 값이 있으면
@@ -210,14 +216,14 @@ export function CardTable() {
             />
 
             <div className="mt-5 flex flex-col items-center gap-2">
+              {/* 글씨까지 든 픽셀 이미지 버튼. 상태별 그림은 globals.css 의 .px-btn-compat */}
               <button
                 type="button"
                 disabled={!bothPlaced}
                 onClick={() => router.push(`/compatibility?a=${slots[0]!.id}&b=${slots[1]!.id}`)}
-                className="rounded-lg px-6 py-2.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-35"
-                style={{ background: 'var(--accent)' }}
+                className="px-btn-compat"
               >
-                궁합보기
+                <span className="sr-only">궁합보기</span>
               </button>
               <p className="text-xs text-[var(--text-muted)]">
                 {bothPlaced
@@ -229,8 +235,8 @@ export function CardTable() {
 
           {error && (
             <div
-              className="mt-4 rounded-lg border p-3 text-sm"
-              style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}
+              className="surface mt-4 rounded-lg border p-3 text-sm"
+              style={{ borderColor: 'var(--accent)', color: 'var(--accent)', background: 'var(--surface)' }}
             >
               {error}
             </div>
