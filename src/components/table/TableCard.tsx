@@ -2,14 +2,8 @@
 
 import { useRef } from 'react';
 import type { PublicProfile } from '@/lib/profiles';
+import { useFanConfig } from './fanConfig';
 import { ELEMENTS, type Element } from '@/lib/saju/constants';
-
-/**
- * 카드 한 장의 크기. 슬롯·드래그 고스트도 같은 값을 쓴다.
- * 앞면 배경(cardBase.png, 1065×1476)과 비율을 맞춘다.
- */
-export const CARD_W = 160;
-export const CARD_H = 222;
 
 /**
  * 앞면 위 오행 색. 배경이 짙은 초록이라 UI 공통색(ELEMENT_COLOR)은 묻힌다.
@@ -40,6 +34,9 @@ type Props =
 const DRAG_THRESHOLD = 6;
 
 export function TableCard(props: Props) {
+  // 카드 크기와 뒤집힘 높이는 설정에서 온다. 튜너로 돌리면 여기부터 바뀐다.
+  const { cardW, cardH, flipLift } = useFanConfig();
+
   if (props.kind === 'add') {
     return (
       <button
@@ -47,8 +44,8 @@ export function TableCard(props: Props) {
         onClick={props.onAdd}
         className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed transition hover:-translate-y-2"
         style={{
-          width: CARD_W,
-          height: CARD_H,
+          width: cardW,
+          height: cardH,
           borderColor: 'var(--border)',
           background: 'var(--surface-sunken)',
           color: 'var(--text-muted)',
@@ -90,11 +87,11 @@ export function TableCard(props: Props) {
     <div
       className="relative select-none transition-[transform,opacity] duration-300"
       style={{
-        width: CARD_W,
-        height: CARD_H,
+        width: cardW,
+        height: cardH,
         perspective: 800,
         opacity: dimmed ? 0.35 : 1,
-        transform: flipped ? 'translateY(-26px)' : undefined,
+        transform: flipped ? `translateY(-${flipLift}px)` : undefined,
         cursor: 'grab',
         touchAction: 'none',
       }}
@@ -167,7 +164,7 @@ export function TableCard(props: Props) {
  * 글자는 카드 폭 기준(cqw)으로 잡아 카드 크기가 바뀌어도 자리가 유지되게 한다.
  * 가운데 괄호 틀(캐릭터 자리)은 아직 비워 둔다.
  */
-function CardFront({ profile }: { profile: PublicProfile }) {
+export function CardFront({ profile }: { profile: PublicProfile }) {
   const { face } = profile;
   const max = face ? Math.max(...ELEMENTS.map((e) => face.elements[e]), 1) : 1;
 

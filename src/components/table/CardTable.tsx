@@ -4,7 +4,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CardFan } from './CardFan';
 import { DropSlots } from './DropSlots';
-import { CARD_H, CARD_W } from './TableCard';
+import { CardFront } from './TableCard';
+import { FanTuner } from './FanTuner';
+import {
+  DEFAULT_FAN_CONFIG,
+  FanConfigProvider,
+  TUNER_ENABLED,
+  loadFanConfig,
+  saveFanConfig,
+  type FanConfig,
+  type FanMetrics,
+} from './fanConfig';
 import { BirthDateGate } from '@/components/BirthDateGate';
 import { ProfileEditor } from '@/components/ProfileEditor';
 import {
@@ -45,6 +55,23 @@ export function CardTable() {
   const [drag, setDrag] = useState<Drag | null>(null);
   const [hovered, setHovered] = useState<number | null>(null);
   const [edit, setEdit] = useState<EditState>({ mode: 'none' });
+
+  /*
+   * 카드 테이블의 생김새. 기본값으로 먼저 그리고, 브라우저에 저장해 둔 값이 있으면
+   * 올라온 뒤에 덮어쓴다(서버가 그린 화면과 첫 렌더가 어긋나지 않게).
+   */
+  const [config, setConfig] = useState<FanConfig>(DEFAULT_FAN_CONFIG);
+  const [metrics, setMetrics] = useState<FanMetrics | null>(null);
+
+  useEffect(() => {
+    if (!TUNER_ENABLED) return;
+    setConfig(loadFanConfig());
+  }, []);
+
+  const changeConfig = useCallback((next: FanConfig) => {
+    setConfig(next);
+    saveFanConfig(next);
+  }, []);
 
   const slotRefs = useRef<(HTMLDivElement | null)[]>([null, null]);
 
@@ -140,7 +167,7 @@ export function CardTable() {
 
   if (edit.mode === 'new' || edit.mode === 'edit') {
     return (
-      <div className="space-y-4">
+      <div className="page-shell space-y-4 pb-12">
         <ProfileEditor
           editing={edit.mode === 'edit' ? edit.profile : undefined}
           onSave={
@@ -158,110 +185,135 @@ export function CardTable() {
   const bothPlaced = Boolean(slots[0] && slots[1]);
 
   return (
-    <div className="relative">
-      {notice && (
-        <p
-          className="mb-4 rounded-lg p-2.5 text-xs leading-relaxed"
-          style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-        >
-          {notice}
-        </p>
-      )}
+    <FanConfigProvider value={config}>
+      <div className="relative flex flex-1 flex-col">
+        {/* 위쪽 — 궁합 슬롯과 안내. 여기까지는 가운데 폭을 지킨다. */}
+        <div className="page-shell">
+          {notice && (
+            <p
+              className="mb-4 rounded-lg p-2.5 text-xs leading-relaxed"
+              style={{
+                background: 'var(--accent-soft)',
+                color: 'var(--accent)',
+              }}
+            >
+              {notice}
+            </p>
+          )}
 
-      {/* 상단 — 궁합 슬롯 */}
-      <section className="pt-2">
-        <DropSlots
-          slots={slots}
-          hovered={hovered}
-          onClear={(i) => setSlots((prev) => prev.map((p, j) => (j === i ? null : p)))}
-          slotRefs={slotRefs}
-        />
+          <section className="pt-2">
+            <DropSlots
+              slots={slots}
+              hovered={hovered}
+              onClear={(i) => setSlots((prev) => prev.map((p, j) => (j === i ? null : p)))}
+              slotRefs={slotRefs}
+            />
 
-        <div className="mt-5 flex flex-col items-center gap-2">
-          <button
-            type="button"
-            disabled={!bothPlaced}
-            onClick={() =>
-              router.push(`/compatibility?a=${slots[0]!.id}&b=${slots[1]!.id}`)
-            }
-            className="rounded-lg px-6 py-2.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-35"
-            style={{ background: 'var(--accent)' }}
-          >
-            궁합보기
-          </button>
-          <p className="text-xs text-[var(--text-muted)]">
-            {bothPlaced
-              ? `${slots[0]!.label} ↔ ${slots[1]!.label}`
-              : '카드 두 장을 위 칸으로 끌어다 놓으세요'}
+            <div className="mt-5 flex flex-col items-center gap-2">
+              <button
+                type="button"
+                disabled={!bothPlaced}
+                onClick={() => router.push(`/compatibility?a=${slots[0]!.id}&b=${slots[1]!.id}`)}
+                className="rounded-lg px-6 py-2.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-35"
+                style={{ background: 'var(--accent)' }}
+              >
+                궁합보기
+              </button>
+              <p className="text-xs text-[var(--text-muted)]">
+                {bothPlaced
+                  ? `${slots[0]!.label} ↔ ${slots[1]!.label}`
+                  : '카드 두 장을 위 칸으로 끌어다 놓으세요'}
+              </p>
+            </div>
+          </section>
+
+          {error && (
+            <div
+              className="mt-4 rounded-lg border p-3 text-sm"
+              style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}
+            >
+              {error}
+            </div>
+          )}
+
+          {storage && !storage.durable && (
+            <p className="mt-4 text-center text-[11px] leading-relaxed text-[var(--text-muted)]">
+              이 서버는 카드를 오래 보관하지 못합니다({storage.name}). 재시작하면 사라집니다.
+            </p>
+          )}
+
+          <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
+            카드를 누르면 뒤집히고, 끌어다 놓으면 궁합 칸에 들어갑니다.
           </p>
         </div>
-      </section>
 
-      {/* 하단 — 카드 부채꼴 */}
-      <section className="table-felt mt-5 px-2 pt-3">
-        {loading ? (
-          <p className="py-16 text-center text-sm text-[var(--text-muted)]">카드를 불러오는 중…</p>
-        ) : (
-          <CardFan
-            profiles={profiles}
-            flippedId={flippedId}
-            placedIds={slots.filter(Boolean).map((p) => p!.id)}
-            onFlip={(id) => setFlippedId((prev) => (prev === id ? null : id))}
-            onAdd={() => setEdit({ mode: 'new' })}
-            onViewSaju={(id) => router.push(`/saju/${id}`)}
-            onEdit={(profile) => setEdit({ mode: 'gate', profile })}
-            onDragStart={startDrag}
+        {/*
+        아래쪽 — 카드 부채꼴.
+        좌우는 화면 끝까지, 아래는 페이지 맨 끝까지 쓴다. 남는 높이는 위에만 두어
+        뒤집힌 카드가 잘리지 않게 하고, 부채꼴 자체는 가운데에 둔다.
+      */}
+        <section
+          className="flex min-h-0 flex-1 justify-center"
+          style={{
+            alignItems:
+              config.areaAlign === 'end'
+                ? 'flex-end'
+                : config.areaAlign === 'start'
+                  ? 'flex-start'
+                  : 'center',
+            marginTop: config.areaGapTop,
+            paddingBottom: config.areaPadBottom,
+          }}
+        >
+          {loading ? (
+            <p className="w-full py-16 text-center text-sm text-[var(--text-muted)]">
+              카드를 불러오는 중…
+            </p>
+          ) : (
+            <CardFan
+              profiles={profiles}
+              flippedId={flippedId}
+              placedIds={slots.filter(Boolean).map((p) => p!.id)}
+              onFlip={(id) => setFlippedId((prev) => (prev === id ? null : id))}
+              onAdd={() => setEdit({ mode: 'new' })}
+              onViewSaju={(id) => router.push(`/saju/${id}`)}
+              onEdit={(profile) => setEdit({ mode: 'gate', profile })}
+              onDragStart={startDrag}
+              onMetrics={setMetrics}
+            />
+          )}
+        </section>
+
+        {edit.mode === 'gate' && (
+          <BirthDateGate
+            profile={edit.profile}
+            onVerified={(full, birthDate) => setEdit({ mode: 'edit', profile: full, birthDate })}
+            onCancel={() => setEdit({ mode: 'none' })}
           />
         )}
 
-      </section>
-
-      <p className="mt-2.5 text-center text-xs text-[var(--text-muted)]">
-        카드를 누르면 뒤집히고, 끌어다 놓으면 궁합 칸에 들어갑니다.
-      </p>
-
-      {error && (
-        <div
-          className="mt-4 rounded-lg border p-3 text-sm"
-          style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}
-        >
-          {error}
-        </div>
-      )}
-
-      {storage && !storage.durable && (
-        <p className="mt-4 text-center text-[11px] leading-relaxed text-[var(--text-muted)]">
-          이 서버는 카드를 오래 보관하지 못합니다({storage.name}). 재시작하면 사라집니다.
-        </p>
-      )}
-
-      {edit.mode === 'gate' && (
-        <BirthDateGate
-          profile={edit.profile}
-          onVerified={(full, birthDate) => setEdit({ mode: 'edit', profile: full, birthDate })}
-          onCancel={() => setEdit({ mode: 'none' })}
-        />
-      )}
-
-      {/* 드래그 중 따라다니는 카드 */}
-      {drag && (
-        <div
-          className="pointer-events-none fixed z-[60] rounded-xl border-2 shadow-lg"
-          style={{
-            left: drag.x - CARD_W / 2,
-            top: drag.y - CARD_H / 2,
-            width: CARD_W,
-            height: CARD_H,
-            borderColor: 'var(--accent)',
-            background: 'var(--surface)',
-            transform: 'rotate(-4deg)',
-          }}
-        >
-          <div className="flex size-full items-center justify-center p-2 text-center">
-            <span className="line-clamp-3 text-sm font-semibold">{drag.profile.label}</span>
+        {/*
+          드래그 중 따라다니는 카드. 부채꼴과 같은 배율로 줄여야 손에 쥐는 순간
+          카드가 커져 보이지 않는다.
+        */}
+        {drag && (
+          <div
+            className="table-card-face pointer-events-none fixed z-[60] overflow-hidden rounded-xl"
+            style={{
+              left: drag.x,
+              top: drag.y,
+              width: config.cardW,
+              height: config.cardH,
+              transform: `translate(-50%, -50%) scale(${metrics?.scale ?? 1}) rotate(-4deg)`,
+            }}
+          >
+            <CardFront profile={drag.profile} />
           </div>
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* 개발용 — 생김새를 화면에서 바로 돌려 보는 패널 */}
+        {TUNER_ENABLED && <FanTuner config={config} onChange={changeConfig} metrics={metrics} />}
+      </div>
+    </FanConfigProvider>
   );
 }
