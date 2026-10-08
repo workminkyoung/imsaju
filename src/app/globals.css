@@ -212,12 +212,12 @@ body {
 }
 
 /*
-  궁합보기 버튼 — 글씨까지 든 이미지 4장(86×40)을 1.5배로 쓴다.
+  궁합보기 버튼 — 글씨까지 든 이미지 4장(86×40)을 원본 크기로 쓴다.
   상태별로 그림만 바꾼다. 글자는 스크린리더용으로만 남긴다.
 */
 .px-btn-compat {
-  width: 129px;
-  height: 60px;
+  width: 86px;
+  height: 40px;
   border: 0;
   padding: 0;
   background: url(/cards/btnDefault.png) center / 100% 100% no-repeat;

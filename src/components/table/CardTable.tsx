@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { preload } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { CardFan } from './CardFan';
-import { DropSlots } from './DropSlots';
+import { DropSlots, type Landing } from './DropSlots';
 import { CardFront } from './TableCard';
 import { FanTuner } from './FanTuner';
 import {
@@ -55,6 +55,7 @@ export function CardTable() {
   const [slots, setSlots] = useState<(PublicProfile | null)[]>([null, null]);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [hovered, setHovered] = useState<number | null>(null);
+  const [landing, setLanding] = useState<Landing | null>(null);
   const [edit, setEdit] = useState<EditState>({ mode: 'none' });
 
   // 버튼 상태 그림은 처음 바뀔 때 깜빡이지 않게 미리 받아 둔다.
@@ -130,6 +131,13 @@ export function CardTable() {
           next[index] = drag.profile;
           return next;
         });
+        setLanding({
+          index,
+          x: event.clientX,
+          y: event.clientY,
+          scale: metrics?.scale ?? 1,
+          key: Date.now(),
+        });
         setFlippedId(null);
       }
       setDrag(null);
@@ -144,7 +152,7 @@ export function CardTable() {
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
     };
-  }, [drag, slotAt]);
+  }, [drag, slotAt, metrics]);
 
   function startDrag(profile: PublicProfile, event: React.PointerEvent) {
     setFlippedId(null);
@@ -213,6 +221,7 @@ export function CardTable() {
               hovered={hovered}
               onClear={(i) => setSlots((prev) => prev.map((p, j) => (j === i ? null : p)))}
               slotRefs={slotRefs}
+              landing={landing}
             />
 
             <div className="mt-5 flex flex-col items-center gap-2">
