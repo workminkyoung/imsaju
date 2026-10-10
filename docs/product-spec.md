@@ -3,7 +3,7 @@
 > 만세력·사주풀이·궁합 웹앱. 이 문서는 무엇을 왜 그렇게 만들었는지를 정리한 것으로,
 > 처음 합류하는 사람이 이것만 읽고 맥락을 잡을 수 있게 쓴다.
 >
-> 최종 갱신: 2026-10-03 · 저장소: [workminkyoung/imsaju](https://github.com/workminkyoung/imsaju)
+> 최종 갱신: 2026-10-10 · 저장소: [workminkyoung/imsaju](https://github.com/workminkyoung/imsaju)
 
 ---
 
@@ -228,7 +228,8 @@ npm run check:gemini
 | `chart` | 입춘·자시 경계 · 음력 윤달 · 시각 미상 |
 | `compatibility` | 합·충·형·해 표가 **대칭이고 12지지를 빠짐없이 덮는지** |
 | `validate` | 잘못된 입력을 **조용히 다른 값으로 바꾸지 않는지** |
-| `profiles` | 목록에 생년월일이 새지 않는지 · 무차별 대입이 막히는지 |
+| `profiles` | 브라우저 저장소 입출력 · 30일 보관 기간 · 궁합 응답에 생년월일이 새지 않는지 |
+| `cardFace` | 카드 앞면 요약(띠·일주·오행)이 만세력과 어긋나지 않는지 |
 | `prompt` | 템플릿 변수 누락 · 원국 근거 지시 · 안전 규칙 |
 
 **검증 철학**: 표를 손으로 적으면 반드시 오타가 난다. 그래서 개별 사례뿐 아니라 **표의
@@ -242,12 +243,12 @@ npm run check:gemini
 특정 호스팅에 묶이지 않는다. 표준 Next.js 만 쓰고 `vercel.json` 은 일부러 두지 않았다.
 
 - **Vercel**: GitHub 저장소 연결 → 환경변수 입력 → 푸시할 때마다 자동 배포
-- **도커**: `Dockerfile` 포함. 볼륨을 붙이면 프롬프트·카드가 남는다
+- **도커**: `Dockerfile` 포함. 볼륨을 붙이면 프롬프트가 남는다
 - **헬스체크**: `GET /api/health` — 타임존·절기·음력·전체 파이프라인을 **실제로 실행**해 보고
   결과를 말한다. "ok"를 적어 두기만 하면 엔진이 죽어도 초록불이 켜진다
 
-필수 환경변수: `GEMINI_API_KEY`, `ADMIN_PASSWORD`,
-그리고 서버리스면 `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`.
+필수 환경변수: `GEMINI_API_KEY`, `ADMIN_PASSWORD`.
+카드는 브라우저에 있으므로 저장소용 환경변수는 없다.
 전체 목록은 [docs/deployment.md](deployment.md).
 
 ---
