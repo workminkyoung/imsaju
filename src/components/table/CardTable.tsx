@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { preload } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { CardFan } from './CardFan';
@@ -8,12 +8,15 @@ import { DropSlots, type Landing } from './DropSlots';
 import { CardFront } from './TableCard';
 import { FanTuner } from './FanTuner';
 import {
+  CARD_BASE_H,
   DEFAULT_FAN_CONFIG,
   FanConfigProvider,
   TUNER_ENABLED,
+  cardSize,
   loadFanConfig,
   saveFanConfig,
   type FanConfig,
+  type FanLimits,
   type FanMetrics,
 } from './fanConfig';
 import { ProfileEditor } from '@/components/ProfileEditor';
@@ -76,6 +79,29 @@ export function CardTable() {
     setConfig(next);
     saveFanConfig(next);
   }, []);
+
+  /*
+   * 튜너 슬라이더에 걸 범위.
+   *
+   * 카드 크기의 상한은 고정값이 아니라 "지금 영역에 들어가는가"로 정해진다. 영역 설정이나
+   * 칸 크기를 만지면 영역이 달라지므로, 그려진 결과(metrics)에서 거꾸로 끌어와 매번 새로 잡는다.
+   * 아직 한 번도 안 그려졌으면 비워 두고 FAN_FIELDS 의 기본 범위를 쓴다.
+   */
+  const limits = useMemo<FanLimits>(() => {
+    if (!metrics) return {};
+    /*
+     * 칸을 키우면 키운 만큼 아래 카드 영역이 줄어든다. 부채꼴이 자동 축소 하한으로도
+     * 들어갈 높이는 남겨 두어야 하므로, 남은 여유만큼만 더 키울 수 있다.
+     */
+    const slack = metrics.available - metrics.height * Math.min(config.minScale, 1);
+    return {
+      cardScale: { min: 0.3, max: round2(metrics.maxCardScale) },
+      slotScale: {
+        min: 0.3,
+        max: round2(Math.max(0.3, config.slotScale + slack / CARD_BASE_H)),
+      },
+    };
+  }, [metrics, config.minScale, config.slotScale]);
 
   const slotRefs = useRef<(HTMLDivElement | null)[]>([null, null]);
 
@@ -294,8 +320,8 @@ export function CardTable() {
             style={{
               left: drag.x,
               top: drag.y,
-              width: config.cardW,
-              height: config.cardH,
+              width: cardSize(config.cardScale).w,
+              height: cardSize(config.cardScale).h,
               transform: `translate(-50%, -50%) scale(${metrics?.scale ?? 1}) rotate(-4deg)`,
             }}
           >
@@ -304,8 +330,20 @@ export function CardTable() {
         )}
 
         {/* 개발용 — 생김새를 화면에서 바로 돌려 보는 패널 */}
-        {TUNER_ENABLED && <FanTuner config={config} onChange={changeConfig} metrics={metrics} />}
+        {TUNER_ENABLED && (
+          <FanTuner
+            config={config}
+            onChange={changeConfig}
+            metrics={metrics}
+            limits={limits}
+          />
+        )}
       </div>
     </FanConfigProvider>
   );
+}
+
+/** 배율은 0.01 단위로 다루므로 상한도 같은 자리에서 끊는다. */
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
 }

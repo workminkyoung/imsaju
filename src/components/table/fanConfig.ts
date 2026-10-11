@@ -9,10 +9,29 @@ import { createContext, useContext } from 'react';
  * 하나를 고칠 때마다 다른 쪽이 깨지므로 한곳에 모아 두고, 화면에서 바로 돌려 보며
  * 맞출 수 있게 튜너(FanTuner)로 같은 값을 내보낸다.
  */
+
+/**
+ * 카드 비율 — 앞면 배경(cardBase.png, 1065×1476)에서 가져왔다.
+ *
+ * 가로·세로를 따로 두면 비율이 틀어져 배경 그림이 늘어난다. 그래서 크기는 **배율 하나**로만
+ * 정하고 높이는 언제나 이 비율로 따라오게 한다.
+ */
+export const CARD_RATIO = 1476 / 1065;
+/** 배율 1 일 때의 카드 너비(px). */
+export const CARD_BASE_W = 160;
+/** 배율 1 일 때의 카드 높이(px). */
+export const CARD_BASE_H = CARD_BASE_W * CARD_RATIO;
+
+/** 배율을 실제 픽셀 크기로. 카드·슬롯·드래그 고스트가 모두 이걸 쓴다. */
+export function cardSize(scale: number): { w: number; h: number } {
+  return { w: CARD_BASE_W * scale, h: CARD_BASE_H * scale };
+}
+
 export interface FanConfig {
-  /** 카드 한 장의 크기(px). 슬롯과 드래그 고스트도 같은 값을 쓴다. */
-  cardW: number;
-  cardH: number;
+  /** 부채꼴에 펼쳐지는 **생성된 카드**의 크기 배율. 높이는 CARD_RATIO 로 따라온다. */
+  cardScale: number;
+  /** 궁합 **칸(카드 두는 곳)**의 크기 배율. 카드와 따로 정한다. */
+  slotScale: number;
   /** 카드를 뒤집을 때 위로 떠오르는 높이(px). */
   flipLift: number;
   /** 영역이 좁을 때 부채꼴 전체를 줄이는 배율의 하한. 더 좁으면 가로 스크롤. */
@@ -40,9 +59,8 @@ export interface FanConfig {
 }
 
 export const DEFAULT_FAN_CONFIG: FanConfig = {
-  // 앞면 배경(cardBase.png, 1065×1476)과 비율을 맞춘 설계 크기. 실제 크기는 영역에 맞춰 줄어든다.
-  cardW: 160,
-  cardH: 222,
+  cardScale: 1,
+  slotScale: 1,
   flipLift: 26,
   minScale: 0.55,
 
@@ -69,59 +87,91 @@ export interface FanMetrics {
   available: number;
   /** 부채꼴 전체에 걸린 배율 */
   scale: number;
+  /**
+   * 카드 배율을 올릴 수 있는 상한 — 이 값을 넘으면 부채꼴이 카드 영역을 벗어난다.
+   * 영역 설정(위 간격·아래 여백)이나 칸 크기가 바뀌면 함께 움직인다.
+   */
+  maxCardScale: number;
 }
+
+/** 튜너가 슬라이더에 걸 범위. 영역에 따라 매번 다시 계산된다. */
+export type FanLimits = Partial<Record<FanNumericKey, { min: number; max: number }>>;
 
 export type FanNumericKey = {
   [K in keyof FanConfig]: FanConfig[K] extends number ? K : never;
 }[keyof FanConfig];
 
+/** 튜너 그룹 — 배열 순서가 곧 패널에 뜨는 순서다. */
+export const FAN_GROUPS = ['영역', '생성된 카드', '카드 두는 곳', '부채꼴'] as const;
+export type FanGroup = (typeof FAN_GROUPS)[number];
+
 export interface FanField {
   key: FanNumericKey;
-  group: '카드' | '부채꼴' | '영역';
+  group: FanGroup;
   label: string;
   hint: string;
   min: number;
   max: number;
   step: number;
+  /** 값에 단위가 없을 때(배율) 표시용 */
+  unit?: string;
 }
 
-/** 튜너에 띄울 항목. 여기 없는 값은 패널에 나오지 않는다. */
+/**
+ * 튜너에 띄울 항목. 여기 없는 값은 패널에 나오지 않는다.
+ *
+ * 순서는 "영역을 먼저 정하고, 그 안에서 카드를 맞춘다"를 따른다. 카드 크기의 상한은
+ * 영역에서 역산되므로(FanLimits) 영역을 나중에 만지면 방금 맞춘 카드가 범위를 벗어난다.
+ */
 export const FAN_FIELDS: readonly FanField[] = [
   {
-    key: 'cardW',
-    group: '카드',
-    label: '카드 너비',
-    hint: '슬롯·드래그 고스트도 함께 바뀐다',
-    min: 60,
-    max: 200,
+    key: 'areaGapTop',
+    group: '영역',
+    label: '영역 위 간격',
+    hint: '안내 문구와 카드 영역 사이',
+    min: 0,
+    max: 120,
     step: 2,
   },
   {
-    key: 'cardH',
-    group: '카드',
-    label: '카드 높이',
-    hint: '너비의 1.5배쯤이 트럼프 비율',
-    min: 90,
-    max: 300,
+    key: 'areaPadBottom',
+    group: '영역',
+    label: '영역 아래 여백',
+    hint: '0 이면 카드가 페이지 끝에 닿는다',
+    min: 0,
+    max: 160,
     step: 2,
   },
+
   {
-    key: 'minScale',
-    group: '카드',
-    label: '최소 배율',
-    hint: '영역에 맞춰 줄일 때 이보다 작게는 안 줄인다',
+    key: 'cardScale',
+    group: '생성된 카드',
+    label: '카드 크기',
+    hint: '가로세로 비율은 그대로. 상한은 카드 영역에서 정해진다',
     min: 0.3,
-    max: 1,
-    step: 0.05,
+    max: 2,
+    step: 0.01,
+    unit: '×',
   },
   {
     key: 'flipLift',
-    group: '카드',
+    group: '생성된 카드',
     label: '뒤집힘 높이',
-    hint: '이 값보다 headroom 이 작으면 위가 잘린다',
+    hint: '이 값보다 위 여백이 작으면 위가 잘린다',
     min: 0,
     max: 80,
     step: 1,
+  },
+
+  {
+    key: 'slotScale',
+    group: '카드 두는 곳',
+    label: '칸 크기',
+    hint: '궁합 A·B 칸. 키우면 아래 카드 영역이 그만큼 줄어든다',
+    min: 0.3,
+    max: 2,
+    step: 0.01,
+    unit: '×',
   },
 
   {
@@ -187,24 +237,15 @@ export const FAN_FIELDS: readonly FanField[] = [
     max: 1.5,
     step: 0.02,
   },
-
   {
-    key: 'areaGapTop',
-    group: '영역',
-    label: '영역 위 간격',
-    hint: '안내 문구와 카드 영역 사이',
-    min: 0,
-    max: 120,
-    step: 2,
-  },
-  {
-    key: 'areaPadBottom',
-    group: '영역',
-    label: '영역 아래 여백',
-    hint: '0 이면 카드가 페이지 끝에 닿는다',
-    min: 0,
-    max: 160,
-    step: 2,
+    key: 'minScale',
+    group: '부채꼴',
+    label: '자동 축소 하한',
+    hint: '영역에 맞춰 줄일 때 이보다 작게는 안 줄인다',
+    min: 0.3,
+    max: 1,
+    step: 0.05,
+    unit: '×',
   },
 ];
 
@@ -217,8 +258,8 @@ export const TUNER_ENABLED = process.env.NODE_ENV !== 'production';
 /** 사이드시트를 여닫는 키. 바꾸려면 여기만 고치면 된다. */
 export const TUNER_KEY = '`';
 
-// 카드 설계 크기를 바꾸면서 버전을 올렸다. 예전 값(104×156)이 새 기본값을 덮지 않게.
-const STORAGE_KEY = 'imsaju.fan-config.v2';
+// 크기를 가로세로(cardW·cardH)에서 배율(cardScale·slotScale)로 바꾸면서 버전을 올렸다.
+const STORAGE_KEY = 'imsaju.fan-config.v3';
 
 /**
  * 만져 둔 값을 브라우저에 남겨 새로고침해도 유지한다.

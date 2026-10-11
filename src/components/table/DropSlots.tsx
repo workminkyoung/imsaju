@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef } from 'react';
 import type { PublicProfile } from '@/lib/profiles';
-import { useFanConfig } from './fanConfig';
+import { cardSize, useFanConfig } from './fanConfig';
 import { CardFront } from './TableCard';
 
 /** 막 놓인 카드 — 놓은 자리에서 칸으로 날아 들어가는 애니메이션의 출발점 */
@@ -31,8 +31,13 @@ interface Props {
 const LABELS = ['A', 'B'];
 
 export function DropSlots({ slots, hovered, onClear, slotRefs, landing }: Props) {
-  // 빈 칸도 카드 모양이어야 하니 카드와 같은 크기를 쓴다.
-  const { cardW, cardH } = useFanConfig();
+  /*
+   * 칸 크기는 부채꼴 카드와 **따로** 정한다. 둘은 역할이 다르다 — 카드는 영역에 맞춰
+   * 줄어들지만, 칸은 궁합 자리를 알려 주는 고정된 과녁이라 화면 위쪽에서 크기를 지킨다.
+   * 비율만은 카드와 같이 간다(cardSize).
+   */
+  const { slotScale } = useFanConfig();
+  const { w: cardW, h: cardH } = cardSize(slotScale);
 
   return (
     <div className="flex items-start justify-center gap-5">

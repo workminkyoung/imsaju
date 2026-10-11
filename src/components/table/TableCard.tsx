@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import type { PublicProfile } from '@/lib/profiles';
-import { useFanConfig } from './fanConfig';
+import { cardSize, useFanConfig } from './fanConfig';
 import { ELEMENTS, type Element } from '@/lib/saju/constants';
 
 /**
@@ -35,7 +35,9 @@ const DRAG_THRESHOLD = 6;
 
 export function TableCard(props: Props) {
   // 카드 크기와 뒤집힘 높이는 설정에서 온다. 튜너로 돌리면 여기부터 바뀐다.
-  const { cardW, cardH, flipLift } = useFanConfig();
+  // 부채꼴의 '생성된 카드'이므로 칸(slotScale)이 아니라 cardScale 을 쓴다.
+  const { cardScale, flipLift } = useFanConfig();
+  const { w: cardW, h: cardH } = cardSize(cardScale);
 
   if (props.kind === 'add') {
     return (

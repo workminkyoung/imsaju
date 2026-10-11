@@ -3,7 +3,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { PublicProfile } from '@/lib/profiles';
 import { TableCard } from './TableCard';
-import { useFanConfig, type FanMetrics } from './fanConfig';
+import {
+  CARD_BASE_H,
+  CARD_BASE_W,
+  cardSize,
+  useFanConfig,
+  type FanMetrics,
+} from './fanConfig';
 
 interface Props {
   profiles: PublicProfile[];
@@ -44,8 +50,7 @@ export function CardFan({
   onMetrics,
 }: Props) {
   const {
-    cardW,
-    cardH,
+    cardScale,
     spreadDeg,
     stepDeg,
     headroom,
@@ -54,7 +59,13 @@ export function CardFan({
     maxRadius,
     widthRatio,
     minScale,
+    areaGapTop,
+    areaPadBottom,
+    slotScale,
   } = useFanConfig();
+
+  // 가로세로를 따로 두지 않는다. 배율 하나에서 비율대로 뽑는다.
+  const { w: cardW, h: cardH } = cardSize(cardScale);
 
   /** 마우스를 올린 카드. 겹쳐 가린 앞면을 보이도록 들어 올려 맨 위로 낸다. */
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -64,20 +75,41 @@ export function CardFan({
   const [box, setBox] = useState({ width: 800, height: 420 });
 
   useLayoutEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
     const measure = () => {
-      const el = wrapRef.current;
-      if (!el) return;
       const top = el.parentElement?.getBoundingClientRect().top ?? 0;
       setBox({
         width: el.clientWidth || 800,
-        // 하한을 두지 않는다. 좁으면 그만큼 배율(scale)이 줄어 맞춘다(minScale 까지).
-        height: Math.max(window.innerHeight - top, 1),
+        // 아래 여백은 영역 바깥이므로 빼고 잰다. 하한은 두지 않는다 — 좁으면
+        // 그만큼 배율(scale)이 줄어 맞춘다(minScale 까지).
+        height: Math.max(window.innerHeight - top - areaPadBottom, 1),
       });
     };
     measure();
     window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, []);
+
+    /*
+     * 창 크기는 그대로인 채 영역만 움직이는 경우가 많다 — 칸을 키우거나 위 간격을 넓히면
+     * 영역이 아래로 밀린다. 이때 두 가지를 다 놓치지 않아야 한다.
+     *
+     *  - 영역의 **크기**가 바뀌는 경우: 바깥 칸을 ResizeObserver 로 본다.
+     *  - 영역의 **위치**만 바뀌는 경우: 내용이 길어져 페이지가 화면보다 커지면 영역은
+     *    같은 높이인 채 아래로만 내려간다. ResizeObserver 는 크기만 보므로 이걸 놓친다.
+     *    그래서 위쪽 내용을 담은 칸도 함께 보고, 설정값도 의존성에 넣어 다시 재게 한다.
+     *
+     * 놓치면 카드 크기 상한이 옛 값에 머물러, 영역을 벗어나는 크기를 허용해 버린다.
+     */
+    const observer = new ResizeObserver(measure);
+    for (const target of [el.parentElement, el.parentElement?.parentElement]) {
+      if (target) observer.observe(target);
+    }
+
+    return () => {
+      window.removeEventListener('resize', measure);
+      observer.disconnect();
+    };
+  }, [areaPadBottom, areaGapTop, slotScale]);
 
   // 카드 + 맨 끝의 '추가' 자리
   const slots = [
@@ -109,7 +141,8 @@ export function CardFan({
    * 그대로인 채 호만 휘어 겹침이 늘지만, 통째로 줄이면 모양이 그대로 유지된다.
    */
   const sag = 1 - Math.cos(maxAngle);
-  const corner = (cardW / 2) * Math.sin(maxAngle);
+  const sinMax = Math.sin(maxAngle);
+  const corner = (cardW / 2) * sinMax;
   const radius = wide;
 
   /*
@@ -124,7 +157,28 @@ export function CardFan({
   const height = Math.round(cardH + drop + headroom);
 
   /** 부채꼴이 실제로 차지하는 가로 폭. 이보다 좁으면 양끝이 잘린다. */
-  const fanWidth = Math.ceil(2 * (radius * Math.sin(maxAngle) + cardW / 2) + 24);
+  const fanWidth = Math.ceil(2 * (radius * sinMax + cardW / 2) + 24);
+
+  /*
+   * 카드 배율을 올릴 수 있는 상한 — 부채꼴이 영역을 벗어나지 않는 가장 큰 배율.
+   *
+   * 높이도 폭도 배율 s 에 대한 1차식이라 그대로 뒤집어 풀 수 있다.
+   *   height(s) = s·(BASE_H·(1−sag) + BASE_W/2·sin) + radius·sag + headroom
+   *   width(s)  = s·BASE_W + 2·radius·sin + 24
+   * 반지름은 배율과 무관(장수·최소 드러남·화면 폭에서 나온다)하므로 상수로 두고 푼다.
+   * box 는 영역이 바뀔 때마다 다시 재므로, 영역을 만지면 이 상한도 따라 움직인다.
+   *
+   * 넘겨서 설정해도 아래 scale 이 알아서 줄이기는 한다. 다만 그때부터는 "설계한 크기"와
+   * 화면에 보이는 크기가 달라지므로, 튜너에서는 여기까지만 올리도록 막는다.
+   */
+  const perScale = CARD_BASE_H * (1 - sag) + (CARD_BASE_W / 2) * sinMax;
+  const maxCardScale = Math.max(
+    0.3,
+    Math.min(
+      (box.height - radius * sag - headroom) / perScale,
+      (box.width - 24 - 2 * radius * sinMax) / CARD_BASE_W,
+    ),
+  );
 
   /*
    * 영역에 맞춰 부채꼴 전체를 줄이는 배율. 카드 안의 글자·막대까지 같은 비율로 줄어든다.
@@ -158,8 +212,9 @@ export function CardFan({
       stepDeg: step,
       available: box.height,
       scale,
+      maxCardScale,
     });
-  }, [onMetrics, radius, drop, height, fanWidth, step, box.height, scale]);
+  }, [onMetrics, radius, drop, height, fanWidth, step, box.height, scale, maxCardScale]);
 
   return (
     <div
