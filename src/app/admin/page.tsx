@@ -252,7 +252,7 @@ export default function AdminPage() {
 
   if (!authed) {
     return (
-      <main className="mx-auto w-full max-w-sm px-4 pb-12 sm:px-6">
+      <main className="page-top mx-auto w-full max-w-sm px-4 pb-12 sm:px-6">
         <form onSubmit={login} className="card">
           <h2 className="text-base font-semibold">관리자 로그인</h2>
           <p className="mt-1 text-xs text-[var(--text-muted)]">
@@ -285,7 +285,7 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="page-shell space-y-4 pb-12">
+    <main className="page-top page-shell space-y-4 pb-12">
       <section className="card">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-base font-semibold">프롬프트 편집</h2>

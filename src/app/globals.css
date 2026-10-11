@@ -138,6 +138,16 @@ body {
   @apply mx-auto w-full max-w-5xl px-4 sm:px-6;
 }
 
+/*
+ * 로고·관리자는 머리말 블록 없이 배경 위에 떠 있다. 글이 그 아래로 깔리지 않게 비우는 자리.
+ *
+ * 좁은 화면은 바깥 틀(layout.tsx)이 이미 비워 두므로 여기서는 넓은 화면만 맡는다.
+ * 카드 테이블은 화면을 가득 써야 해서 이 클래스를 쓰지 않는다.
+ */
+.page-top {
+  @apply sm:pt-24;
+}
+
 /* 사주풀이 마크다운 출력 */
 .reading h2 {
   @apply mt-7 mb-2.5 text-lg font-bold;

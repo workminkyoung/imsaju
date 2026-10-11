@@ -40,7 +40,7 @@ export default function SajuPage() {
   }, [id]);
 
   return (
-    <main className="page-shell space-y-4 pb-12">
+    <main className="page-top page-shell space-y-4 pb-12">
       <Link
         href="/"
         className="inline-block text-xs text-[var(--text-muted)] transition hover:text-[var(--px-cream)]"

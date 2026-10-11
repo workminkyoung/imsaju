@@ -206,7 +206,7 @@ export function CardTable() {
 
   if (edit.mode === 'new' || edit.mode === 'edit') {
     return (
-      <div className="page-shell space-y-4 pb-12">
+      <div className="page-top page-shell space-y-4 pb-12">
         <ProfileEditor
           editing={edit.mode === 'edit' ? edit.profile : undefined}
           onSave={
@@ -228,7 +228,11 @@ export function CardTable() {
       <div className="relative flex flex-1 flex-col">
         {/* 위쪽 — 궁합 슬롯과 안내. 여기까지는 가운데 폭을 지킨다. */}
         <div className="page-shell">
-          <section className="pt-2">
+          {/*
+            넓은 화면에서는 바깥 틀이 위를 비우지 않으므로(layout.tsx) 칸이 천장에 붙는다.
+            그래서 여기서 숨 쉴 자리를 둔다. 좁은 화면은 바깥 틀이 이미 비워 두었다.
+          */}
+          <section className="pt-2 sm:pt-10">
             <DropSlots
               slots={slots}
               hovered={hovered}
