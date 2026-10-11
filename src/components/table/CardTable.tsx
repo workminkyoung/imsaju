@@ -31,6 +31,7 @@ import {
   type PublicProfile,
   type StoredProfile,
 } from '@/lib/profiles';
+import { deleteReading, pruneReadings } from '@/lib/readings';
 import type { SajuInput } from '@/lib/saju/types';
 
 type EditState =
@@ -107,7 +108,10 @@ export function CardTable() {
 
   // 카드는 브라우저에만 있으므로 서버가 그린 첫 화면에는 없다. 올라온 뒤에 읽는다.
   const reload = useCallback(() => {
-    setProfiles(listProfiles().map(toPublic));
+    const list = listProfiles();
+    setProfiles(list.map(toPublic));
+    // 보관 기간이 지나 사라진 카드의 풀이는 주인이 없다. 목록을 읽은 김에 걷어 낸다.
+    pruneReadings(list.map((p) => p.id));
     setLoading(false);
   }, []);
 
@@ -188,6 +192,7 @@ export function CardTable() {
 
   async function removeCard(state: Extract<EditState, { mode: 'edit' }>) {
     deleteProfile(state.profile.id);
+    deleteReading(state.profile.id);
     setSlots((prev) => prev.map((p) => (p?.id === state.profile.id ? null : p)));
     setEdit({ mode: 'none' });
     reload();

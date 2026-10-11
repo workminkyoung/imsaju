@@ -29,6 +29,21 @@ interface Props {
   variant?: 'panel' | 'hero';
   /** hero 에서 버튼 왼쪽에 놓을 '무엇을 근거로 삼는지' 목록 */
   steps?: readonly ReadingStep[];
+  /** 이미 만들어 둔 풀이. 있으면 생성하지 않고 그대로 보여 준다. */
+  saved?: { text: string; model: string } | null;
+  /**
+   * 끝까지 성공했을 때만 불린다. 중단·오류는 부르지 않는다 —
+   * 반 토막 난 글이 '이미 만든 풀이'로 굳으면 다시 만들 수 없다.
+   */
+  onComplete?: (text: string, model: string) => void;
+  /**
+   * 한 번만 만들게 할지.
+   *
+   * 같은 만세력이면 근거가 같고 표현만 달라지는데 생성마다 LLM 할당량이 나간다.
+   * 그래서 성공한 풀이에는 「다시 생성」을 띄우지 않는다. 다만 API 가 끊기거나 오류로
+   * 끝난 경우는 사용자 잘못이 아니므로 그때는 언제든 다시 시도할 수 있어야 한다.
+   */
+  once?: boolean;
 }
 
 /**
@@ -45,12 +60,18 @@ export function ReadingPanel({
   actionLabel = '사주풀이 생성',
   variant = 'panel',
   steps,
+  saved,
+  onComplete,
+  once = false,
 }: Props) {
-  const [text, setText] = useState('');
-  const [status, setStatus] = useState<'idle' | 'streaming' | 'done' | 'interrupted' | 'error'>('idle');
+  // 저장해 둔 풀이가 있으면 다 만들어 놓은 상태로 시작한다.
+  const [text, setText] = useState(saved?.text ?? '');
+  const [status, setStatus] = useState<'idle' | 'streaming' | 'done' | 'interrupted' | 'error'>(
+    saved ? 'done' : 'idle',
+  );
   const [error, setError] = useState('');
   const [interrupted, setInterrupted] = useState('');
-  const [model, setModel] = useState('');
+  const [model, setModel] = useState(saved?.model ?? '');
   const abortRef = useRef<AbortController | null>(null);
 
   async function generate() {
@@ -101,6 +122,8 @@ export function ReadingPanel({
         setStatus('interrupted');
       } else {
         setStatus('done');
+        // 끝까지 받아 낸 것만 넘긴다. 저장할지는 받는 쪽이 정한다.
+        onComplete?.(final.body, response.headers.get('x-gemini-model') ?? '');
       }
     } catch (err) {
       if ((err as Error)?.name === 'AbortError') return;
@@ -164,7 +187,7 @@ export function ReadingPanel({
           </p>
         </div>
 
-        {status !== 'streaming' && (
+        {status !== 'streaming' && !(once && status === 'done') && (
           <button
             type="button"
             onClick={generate}
@@ -225,7 +248,10 @@ export function ReadingPanel({
           {status === 'done' && model && (
             <p className="mt-6 border-t pt-3 text-[11px] text-[var(--text-muted)]"
               style={{ borderColor: 'var(--border)' }}>
-              {model} 이 생성했습니다. 같은 만세력이라도 생성할 때마다 표현이 달라집니다.
+              {model} 이 생성했습니다.{' '}
+              {once
+                ? '풀이는 카드 한 장당 한 번만 만들어지며, 이 브라우저에 저장됩니다.'
+                : '같은 만세력이라도 생성할 때마다 표현이 달라집니다.'}
             </p>
           )}
         </>

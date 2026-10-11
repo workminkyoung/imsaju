@@ -5,11 +5,16 @@ import { LuckCycles } from './LuckCycles';
 import { ManseTable } from './ManseTable';
 import { ReadingPanel } from './ReadingPanel';
 import { IconDiamond, IconElements, IconLuck, IconTenGods } from './icons';
+import { saveReading, type StoredReading } from '@/lib/readings';
 import type { SajuChart } from '@/lib/saju/types';
 
 interface Props {
+  /** 풀이를 어느 카드에 묶어 둘지 */
+  profileId: string;
   name: string;
   chart: SajuChart;
+  /** 이 카드로 이미 만들어 둔 풀이. 없으면 null. */
+  savedReading: StoredReading | null;
 }
 
 /** 사주풀이가 무엇을 근거로 삼는지 — 위에 그린 칸들과 같은 아이콘을 쓴다. */
@@ -28,7 +33,7 @@ const READING_STEPS = [
  *
  * 풀이를 요청할 때만 입력을 서버로 보내고, 서버는 다시 계산해 쓰고 저장하지 않는다.
  */
-export function SajuView({ name, chart }: Props) {
+export function SajuView({ profileId, name, chart, savedReading }: Props) {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">{name} 님의 사주</h2>
@@ -75,6 +80,9 @@ export function SajuView({ name, chart }: Props) {
         actionLabel="사주풀이 시작하기"
         variant="hero"
         steps={READING_STEPS}
+        once
+        saved={savedReading}
+        onComplete={(text, model) => saveReading(profileId, text, model)}
       />
     </div>
   );

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { SajuView } from '@/components/SajuView';
 import { getProfile, touchProfile, type StoredProfile } from '@/lib/profiles';
+import { getReading, type StoredReading } from '@/lib/readings';
 import { computeSaju } from '@/lib/saju';
 import type { SajuChart } from '@/lib/saju/types';
 
@@ -12,7 +13,13 @@ type State =
   | { status: 'loading' }
   | { status: 'missing' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; profile: StoredProfile; chart: SajuChart };
+  | {
+      status: 'ready';
+      profile: StoredProfile;
+      chart: SajuChart;
+      /** 이미 만들어 둔 풀이. 카드와 함께 꺼내 와야 첫 화면이 깜빡이지 않는다. */
+      reading: StoredReading | null;
+    };
 
 /**
  * 카드 한 장의 사주 풀이.
@@ -32,7 +39,12 @@ export default function SajuPage() {
     }
     touchProfile(id);
     try {
-      setState({ status: 'ready', profile, chart: computeSaju(profile.input) });
+      setState({
+        status: 'ready',
+        profile,
+        chart: computeSaju(profile.input),
+        reading: getReading(id),
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : '만세력을 계산하지 못했습니다.';
       setState({ status: 'error', message });
@@ -66,7 +78,12 @@ export default function SajuPage() {
       )}
 
       {state.status === 'ready' && (
-        <SajuView name={state.profile.label} chart={state.chart} />
+        <SajuView
+          profileId={state.profile.id}
+          name={state.profile.label}
+          chart={state.chart}
+          savedReading={state.reading}
+        />
       )}
     </main>
   );
