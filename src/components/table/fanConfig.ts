@@ -59,13 +59,13 @@ export interface FanConfig {
 }
 
 export const DEFAULT_FAN_CONFIG: FanConfig = {
-  cardScale: 1,
+  cardScale: 1.33,
   slotScale: 1,
-  flipLift: 26,
+  flipLift: 28,
   minScale: 0.55,
 
-  spreadDeg: 96,
-  stepDeg: 15,
+  spreadDeg: 84,
+  stepDeg: 17,
   headroom: 48,
   minReveal: 72,
   minRadius: 320,
@@ -73,8 +73,8 @@ export const DEFAULT_FAN_CONFIG: FanConfig = {
   widthRatio: 0.62,
 
   areaAlign: 'end',
-  areaGapTop: 12,
-  areaPadBottom: 0,
+  areaGapTop: 0,
+  areaPadBottom: 24,
 };
 
 /** 부채꼴을 그리고 나서 실제로 나온 값. 튜너에서 읽기 전용으로 보여 준다. */
