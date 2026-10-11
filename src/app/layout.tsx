@@ -32,17 +32,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           모서리에 그대로 붙는다.
         */}
         <div className="relative flex min-h-screen flex-col pt-20 sm:pt-0">
-          <Link
-            href="/"
-            className="group absolute top-5 left-4 z-40 sm:top-6 sm:left-6"
-          >
-            <h1 className="ganji text-2xl font-bold tracking-tight">萬歲曆</h1>
-            <p className="mt-0.5 text-xs text-[var(--text-muted)]">만세력과 사주풀이</p>
+          <Link href="/" className="absolute top-5 left-4 z-40 sm:left-6">
+            <h1 className="text-2xl font-bold tracking-tight">IMSaju</h1>
+            <p className="mt-0.5 text-xs text-[var(--text-muted)]">프로들의 궁합</p>
           </Link>
 
           <Link
             href="/admin"
-            className="absolute top-6 right-4 z-40 text-xs text-[var(--text-muted)] transition hover:text-[var(--px-cream)] sm:top-7 sm:right-6"
+            className="absolute top-7 right-4 z-40 text-xs text-[var(--text-muted)] transition hover:text-[var(--px-cream)] sm:right-6"
           >
             관리자
           </Link>

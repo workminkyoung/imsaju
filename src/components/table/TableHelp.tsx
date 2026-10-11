@@ -39,7 +39,7 @@ export function TableHelp() {
        * 오른쪽 끝은 관리자 링크(layout.tsx)가 쓰고 있어 그 왼쪽에 선다.
        * 글자 수가 고정이라 간격을 숫자로 잡아도 흔들리지 않는다.
        */
-      className="fixed top-5 right-16 z-50 sm:top-6 sm:right-[4.75rem]"
+      className="fixed top-6 right-16 z-50 sm:right-[4.75rem]"
     >
       <button
         type="button"
