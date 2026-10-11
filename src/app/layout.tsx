@@ -5,7 +5,7 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'IMSaju — 만세력 · 사주풀이',
   description:
-    '천문 계산으로 절기를 직접 구하고, 한국 표준시 이력과 진태양시를 반영한 만세력. 계산 근거를 함께 공개합니다.',
+    '천문 계산으로 절기를 직접 구하고, 한국 표준시 이력과 진태양시를 반영한 만세력과 사주풀이.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
