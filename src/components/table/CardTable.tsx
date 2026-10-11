@@ -7,6 +7,7 @@ import { CardFan } from './CardFan';
 import { DropSlots, type Landing } from './DropSlots';
 import { CardFront } from './TableCard';
 import { FanTuner } from './FanTuner';
+import { TableHelp } from './TableHelp';
 import {
   CARD_BASE_H,
   DEFAULT_FAN_CONFIG,
@@ -21,7 +22,6 @@ import {
 } from './fanConfig';
 import { ProfileEditor } from '@/components/ProfileEditor';
 import {
-  PROFILE_TTL_DAYS,
   createProfile,
   deleteProfile,
   getProfile,
@@ -251,11 +251,15 @@ export function CardTable() {
               >
                 <span className="sr-only">궁합보기</span>
               </button>
-              <p className="text-xs text-[var(--text-muted)]">
-                {bothPlaced
-                  ? `${slots[0]!.label} ↔ ${slots[1]!.label}`
-                  : '카드 두 장을 위 칸으로 끌어다 놓으세요'}
-              </p>
+              {/*
+                비어 있을 때의 안내는 도움말(?)로 옮겼다 — 늘 떠 있으면 카드보다 글이 먼저 보인다.
+                두 장을 올린 뒤의 이름 표시는 방금 한 일의 결과라 그대로 둔다.
+              */}
+              {bothPlaced && (
+                <p className="text-xs text-[var(--text-muted)]">
+                  {slots[0]!.label} ↔ {slots[1]!.label}
+                </p>
+              )}
             </div>
           </section>
 
@@ -268,13 +272,6 @@ export function CardTable() {
             </div>
           )}
 
-          <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
-            카드를 누르면 뒤집히고, 끌어다 놓으면 궁합 칸에 들어갑니다.
-          </p>
-          <p className="mt-1 text-center text-[11px] text-[var(--text-muted)]">
-            카드는 이 브라우저에만 저장됩니다
-            {PROFILE_TTL_DAYS !== null && ` · ${PROFILE_TTL_DAYS}일 동안 쓰지 않으면 지워져요`}
-          </p>
         </div>
 
         {/*
@@ -332,6 +329,9 @@ export function CardTable() {
             <CardFront profile={drag.profile} />
           </div>
         )}
+
+        {/* 오른쪽 위 ? — 안내 문구는 여기 접어 둔다 */}
+        <TableHelp />
 
         {/* 개발용 — 생김새를 화면에서 바로 돌려 보는 패널 */}
         {TUNER_ENABLED && (
