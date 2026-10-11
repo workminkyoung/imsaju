@@ -1,6 +1,7 @@
 'use client';
 
 import type { Element } from '@/lib/saju/constants';
+import { IconPillars } from './icons';
 import type { Pillar, SajuChart } from '@/lib/saju/types';
 
 /**
@@ -74,7 +75,10 @@ export function ManseTable({ chart }: { chart: ManseChart }) {
   return (
     <section className="card">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-base font-semibold">원국</h2>
+        <h2 className="flex items-center gap-2 text-base font-semibold">
+          <IconPillars style={{ color: 'var(--accent)' }} />
+          원국
+        </h2>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--text-muted)]">
           <span>
             일간{' '}

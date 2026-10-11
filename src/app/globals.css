@@ -275,3 +275,52 @@ body {
   outline: 2px solid var(--px-cream);
   outline-offset: 2px;
 }
+
+/*
+  강조 버튼 — 크림 바탕에 짙은 글자.
+
+  한 화면에 버튼이 여럿일 때 무엇을 눌러야 하는지 한눈에 보여야 한다. .px-btn 과 모양은
+  같게 두고 색만 뒤집어 서열을 만든다. 화면에서 가장 중요한 하나에만 쓴다.
+*/
+.px-btn-accent {
+  @apply rounded-lg font-semibold transition;
+  background: var(--px-cream);
+  color: var(--px-deep);
+  border: 2px solid var(--px-outline);
+  box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.18);
+}
+.px-btn-accent:hover:not(:disabled) {
+  background: var(--px-cream-ink);
+}
+.px-btn-accent:active:not(:disabled) {
+  box-shadow: inset 0 3px 0 rgb(0 0 0 / 0.18);
+}
+.px-btn-accent:disabled {
+  background: var(--px-btn-disabled);
+  color: var(--px-on-bg);
+  cursor: not-allowed;
+}
+.px-btn-accent:focus-visible {
+  outline: 2px solid var(--px-cream);
+  outline-offset: 3px;
+}
+
+/*
+  두 겹 테두리 — 사주풀이 칸을 분석 칸들과 구분한다.
+
+  분석 칸이 여럿 쌓인 뒤라 같은 테두리를 하나 더 두면 묻힌다. 안쪽에 크림 선을 한 겹
+  더 깔아 "여기부터는 다른 것"이라고 알린다. 안쪽 선은 내용 위에 떠야 하므로 ::before 로
+  그리고 클릭을 가로채지 않게 둔다.
+*/
+.ornate {
+  position: relative;
+  border-color: var(--accent);
+}
+.ornate::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 0.5rem;
+  pointer-events: none;
+}

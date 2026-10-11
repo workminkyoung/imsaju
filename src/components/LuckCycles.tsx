@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { IconLuck } from './icons';
 import type { Element } from '@/lib/saju/constants';
 import type { SajuChart } from '@/lib/saju/types';
 
@@ -33,7 +34,10 @@ export function LuckCycles({ chart }: { chart: LuckChart }) {
   return (
     <section className="card">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-base font-semibold">대운 · 세운</h2>
+        <h2 className="flex items-center gap-2 text-base font-semibold">
+          <IconLuck style={{ color: 'var(--accent)' }} />
+          대운 · 세운
+        </h2>
         <span className="text-xs text-[var(--text-muted)]">
           {daeun.forward ? '순행' : '역행'} · 대운수 {daeun.startAge}
           <span className="ml-1.5">

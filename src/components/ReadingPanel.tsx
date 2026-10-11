@@ -1,8 +1,16 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { Markdown } from './Markdown';
+import { IconScroll } from './icons';
 import { splitInterrupt } from '@/lib/streamMarker';
+
+/** 풀이가 무엇을 근거로 삼는지 보여 주는 한 칸. */
+export interface ReadingStep {
+  icon: ReactNode;
+  label: string;
+  hint: string;
+}
 
 interface Props {
   /** 스트리밍 엔드포인트 (/api/reading 또는 /api/compatibility/reading) */
@@ -13,6 +21,14 @@ interface Props {
   description?: string;
   /** 첫 생성 버튼 문구 */
   actionLabel?: string;
+  /**
+   * 'hero' 는 아직 생성 전일 때만 테두리를 두른 큰 칸으로 그린다.
+   * 분석 칸이 여럿 쌓인 뒤라 같은 모양이면 묻히기 때문이다.
+   * 한 번 생성하고 나면 결과가 주인공이므로 보통 패널로 돌아간다.
+   */
+  variant?: 'panel' | 'hero';
+  /** hero 에서 버튼 왼쪽에 놓을 '무엇을 근거로 삼는지' 목록 */
+  steps?: readonly ReadingStep[];
 }
 
 /**
@@ -27,6 +43,8 @@ export function ReadingPanel({
   title = '사주풀이',
   description = '위 만세력을 그대로 근거 삼아 풀이해 드려요. 이 단계에서만 AI를 씁니다.',
   actionLabel = '사주풀이 생성',
+  variant = 'panel',
+  steps,
 }: Props) {
   const [text, setText] = useState('');
   const [status, setStatus] = useState<'idle' | 'streaming' | 'done' | 'interrupted' | 'error'>('idle');
@@ -89,6 +107,51 @@ export function ReadingPanel({
       setError((err as Error)?.message ?? '알 수 없는 오류가 발생했습니다.');
       setStatus('error');
     }
+  }
+
+  // 아직 아무것도 만들지 않았을 때만 큰 칸으로. 결과가 생기면 그쪽이 주인공이다.
+  if (variant === 'hero' && status === 'idle') {
+    return (
+      <section className="card ornate flex flex-wrap items-center gap-x-6 gap-y-5 p-6">
+        <div className="flex min-w-[15rem] flex-1 items-center gap-4">
+          <IconScroll className="size-9 shrink-0" />
+          <div>
+            <h2 className="text-lg font-bold">{title}</h2>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--text-muted)]">{description}</p>
+          </div>
+        </div>
+
+        {steps && steps.length > 0 && (
+          <ol className="flex flex-wrap items-center gap-2">
+            {steps.map((step, index) => (
+              <Fragment key={step.label}>
+                {index > 0 && (
+                  <span aria-hidden className="text-[var(--text-muted)]">
+                    ›
+                  </span>
+                )}
+                <li
+                  className="rounded-lg border px-3 py-2"
+                  style={{ borderColor: 'var(--border)', background: 'var(--surface-sunken)' }}
+                >
+                  <span className="flex items-center gap-1.5 text-xs font-medium">
+                    <span style={{ color: 'var(--accent)' }}>{step.icon}</span>
+                    {step.label}
+                  </span>
+                  <span className="mt-0.5 block text-[10px] text-[var(--text-muted)]">
+                    {step.hint}
+                  </span>
+                </li>
+              </Fragment>
+            ))}
+          </ol>
+        )}
+
+        <button type="button" onClick={generate} className="px-btn-accent px-5 py-3 text-sm">
+          {actionLabel} <span aria-hidden>→</span>
+        </button>
+      </section>
+    );
   }
 
   return (

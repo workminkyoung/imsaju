@@ -1,6 +1,7 @@
 'use client';
 
 import { ELEMENTS, type Element } from '@/lib/saju/constants';
+import { IconElements, IconTenGods } from './icons';
 import type { SajuChart } from '@/lib/saju/types';
 
 /** 분석 표가 실제로 쓰는 부분만. 생년월일이 빠진 축소본도 받을 수 있어야 한다. */
@@ -24,7 +25,10 @@ export function Analysis({ chart }: { chart: AnalysisChart }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <section className="card">
-        <h2 className="mb-4 text-base font-semibold">오행 분포</h2>
+        <h2 className="mb-4 flex items-center gap-2 text-base font-semibold">
+          <IconElements style={{ color: 'var(--accent)' }} />
+          오행 분포
+        </h2>
 
         <div className="space-y-2.5">
           {ELEMENTS.map((element) => {
@@ -59,7 +63,10 @@ export function Analysis({ chart }: { chart: AnalysisChart }) {
       </section>
 
       <section className="card">
-        <h2 className="mb-4 text-base font-semibold">십신과 세력</h2>
+        <h2 className="mb-4 flex items-center gap-2 text-base font-semibold">
+          <IconTenGods style={{ color: 'var(--accent)' }} />
+          십신과 세력
+        </h2>
 
         <div className="mb-4 rounded-lg p-3" style={{ background: 'var(--surface-sunken)' }}>
           <div className="flex items-baseline justify-between">
